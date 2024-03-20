@@ -3,7 +3,7 @@
 #include "JoyStick.h"
 #include <WiFi.h>       // standard library
 #include <WebServer.h>  // standard library
-#include "SuperMon.h"   // .h file that stores your html page code
+#include "WebCode.h"   // .h file that stores your html page code
 
 // here you post web pages to your homes intranet which will make page debugging easier
 // as you just need to refresh the browser as opposed to reconnection to the web server
