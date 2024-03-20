@@ -1,6 +1,7 @@
 #include "MotorDriver.h"
 #include "Stitcher.h"
 #include "JoyStick.h"
+#include 
 //#include <memory>
 
 const int xFrames = 31;//XSTEPSIZE / XSTEPSPERPICTURE + 1;
@@ -129,7 +130,7 @@ void setup()
 {
   Serial.begin(9600);
   delay(100);
-
+/*
   // - Init I/O Connections
  // pinMode(BUTTON_PIN, INPUT_PULLUP); // ToDO with arduino mega
   pinMode (transistor, OUTPUT);
@@ -139,7 +140,7 @@ void setup()
   pinMode(Y_STEP_PIN,OUTPUT);
   pinMode(EN, OUTPUT);
   digitalWrite(EN,LOW);
-
+*/
 
   //auto mot_driver = new MotorDriver();
   //shared_ptr<MotorDriver> mot_driver{new MotorDriver()};
@@ -157,7 +158,7 @@ void loop()
 {
     //mot_driver->make_step_with_motor(xMotor, 5000, true, 1000);
     mot_driver->make_step_with_motor(xMotor, 5000, true, 1000);
-    return 0;
+//    return 0;
 
 //  mot_driver[m_type.xMotor]->walk(50, -1, 10);
 // mot_driver = stitcher->own_the_mot_driver(mot_driver);

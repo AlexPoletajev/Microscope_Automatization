@@ -1,7 +1,9 @@
 #ifndef _MOTOR_H_
 #define _MOTOR_H_
 
-#include <ArduinoSTL.h>
+//#include <ArduinoSTL.h>
+#include <iostream>
+#include <vector>
 #include <ArxSmartPtr.h>
 #include <map>
 #include "ControlRoom.h"
@@ -23,7 +25,7 @@ public:
 
   ~Motor() = default;
 
-  Motor::Motor(const m_type &type, const std::pair<byte, byte> &pin_data)
+  Motor(const m_type &type, const std::pair<byte, byte> &pin_data)
     //: Motor{ pin_data, Y_DIR_PIN, X_STEP_PIN, Y_STEP_PIN }  //, ID{++count}
     : dir_pin{ pin_data.first }, step_pin{ pin_data.second }, type{ type } {
     //this->type = type;
@@ -35,7 +37,7 @@ public:
 
   void walk(const int &num_steps, const bool &direction, const int &delay_time);
   void go_to_position(const int pos);
-  const int get_position(){return &position;};
+  const int get_position(){return position;};
 };
 
 

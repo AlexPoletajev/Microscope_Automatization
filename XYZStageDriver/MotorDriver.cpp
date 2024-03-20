@@ -10,7 +10,7 @@ MotorDriver::~MotorDriver() {
     delete ptr;
 }
 
-MotorDriver::make_step_with_motor(const m_type &motor, const int &num_steps, const bool &direction, const int &delay_time) {
+void MotorDriver::make_step_with_motor(const m_type &motor, const int &num_steps, const bool &direction, const int &delay_time) {
   active_motors[motor]->walk(num_steps, direction, delay_time);
 }
 
@@ -24,6 +24,7 @@ std::vector<int> MotorDriver::get_position() {
 
   return result;
 }
+
 //A498
 //int delayTime = 1000;
 //int stps= 1500;
