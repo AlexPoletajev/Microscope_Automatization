@@ -230,23 +230,24 @@ void setup()
 
   // finally begin the server
   server.begin();
-/*
+
   // - Init I/O Connections
  // pinMode(BUTTON_PIN, INPUT_PULLUP); // ToDO with arduino mega
-  pinMode (transistor, OUTPUT);
+  // pinMode (transistor, OUTPUT);
   pinMode(X_DIR_PIN, OUTPUT); 
   pinMode(X_STEP_PIN,OUTPUT);  
   pinMode(Y_DIR_PIN, OUTPUT); 
   pinMode(Y_STEP_PIN,OUTPUT);
-  pinMode(EN, OUTPUT);
-  digitalWrite(EN,LOW);
-*/
+  // pinMode(EN, OUTPUT);
+  // digitalWrite(EN,LOW);
+
 
   //auto mot_driver = new MotorDriver();
   //shared_ptr<MotorDriver> mot_driver{new MotorDriver()};
   mot_driver = make_shared<MotorDriver>();
 
- // auto stitcher = new Stitcher();
+
+  
  // auto joystick = new JoyStick();
 
   delay (1000);
@@ -379,11 +380,19 @@ void on_button_move() {
   int y = server.arg("y_steps").toInt();
   int z = server.arg("z_steps").toInt();
 
-
-  Serial.print("Button 0"); 
-  Serial.println(x); 
-  Serial.println(y); 
-  Serial.println(z);
+  bool dir = false;
+  dir = x > 0 ? true : false;
+  mot_driver->make_step_with_motor(xMotor, abs(x), dir, 5000);
+  dir = y > 0 ? true : false;
+  mot_driver->make_step_with_motor(yMotor, abs(y), dir, 5000);
+  dir = z > 0 ? true : false;
+  mot_driver->make_step_with_motor(zMotor, abs(z), dir, 5000);
+  
+  //auto stitcher = make_shared<Stitcher>(mot_driver);
+/*
+  std::cout << "x:  " << x << std::endl;
+  std::cout << "y:  " << y << std::endl;
+  std::cout << "z:  " << z << std::endl;*/
   //
 
 /*

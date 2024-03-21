@@ -5,12 +5,12 @@
 #define DEBUG  
 
 // -  Motor
-#define X_DIR_PIN         5
-#define Y_DIR_PIN         7
-#define Z_DIR_PIN         9
-#define X_STEP_PIN        2
-#define Y_STEP_PIN        4
-#define Z_STEP_PIN        6
+#define X_DIR_PIN         22
+#define Y_DIR_PIN         18
+#define Z_DIR_PIN         16
+#define X_STEP_PIN        23
+#define Y_STEP_PIN        19
+#define Z_STEP_PIN        17
 /*
 // - Button
 #define BUTTON_PIN        A15

@@ -22,7 +22,7 @@ class Stitcher {
 
 public:
 
-  Stitcher(){};
+  Stitcher(std::shared_ptr<MotorDriver> mot_driver) : motor_driver{mot_driver}{};
 
   std::shared_ptr<MotorDriver> own_the_mot_driver(std::shared_ptr<MotorDriver> mot_driver) {
     motor_driver.swap(mot_driver);
