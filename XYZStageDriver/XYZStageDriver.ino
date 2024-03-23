@@ -26,7 +26,9 @@
 
 // variables to store measure data and sensor states
 int x_mot = 0, z_mot = 0, y_mot = 0;
-int z_start = 0, z_end = 0, z_focus_range = 0;
+int x_start = 0, x_end = 0, x_diff = 0, x_scan_range = 0, x_frame_size = 0;
+int y_start = 0, y_end = 0, y_diff = 0, y_scan_range = 0, y_frame_size = 0;
+int z_start = 0, z_end = 0, z_diff = 0, z_scan_range = 0, z_frame_size = 0;
 
 int FanSpeed = 0;
 bool LED0 = false, SomeOutput = false;
@@ -52,105 +54,18 @@ IPAddress ip;
 WebServer server(80);
 //#include <memory>
 
-const int xFrames = 31;//XSTEPSIZE / XSTEPSPERPICTURE + 1;
-const int yFrames = 19;//YSTEPSIZE / YSTEPSPERPICTURE;
+const int xFrames = 31;//XSCANRANGE / XSTEPSPERPICTURE + 1;
+const int yFrames = 19;//YSCANRANGE / YSTEPSPERPICTURE;
 
 // sate variable to track measuring procedure of z focus range
-bool z_focus_measure_on = false;
-
-//Shutter
-const int transistor = 36;
+bool measure_on = false;
 
 
 
 using namespace std;
-shared_ptr<MotorDriver> mot_driver;
-//Stitcher * stitcher = new Stitcher();
- // auto joystick = new JoyStick();
+std::shared_ptr<MotorDriver> mot_driver;
+std::shared_ptr<Scanner> scanner;
 
-
-// void manualDrive()
-// {
-//   boolean xDir, yDir;
-//   float xValue, yValue, zValue;
-
-//   int buttonState = 0;
-
-//   delay(1000);
-//   while(digitalRead(ButtonPin) != LOW)
-//   {
-//     buttonState = digitalRead(ButtonPin);
-//     Serial.println(buttonState);
-  
-//     xValue = analogRead(joyX);
-//     yValue = analogRead(joyY);
-//     zValue = analogRead(joyZ);
-    
-//     xValue = map(xValue, 0,1023, -512, 512);
-//     yValue = map(yValue,0,1023,-512,512);
-//     //zValue = map(zValue,0,1023,-512,512);
-
-//     //String st = String(xValue) + " " + String(yValue) + " " + String(buttonState) + " " + String(zValue);
-//     //Serial.println(st);
-    
-//     if (xValue < 0)
-//     {
-//         xValue = abs(xValue);
-//         xDir = true;
-//     }
-//     else 
-//     {
-//       xDir = false;
-//     }
-
-
-//     if (yValue < 0)
-//     {
-//       yValue = abs(yValue);
-//       yDir = true;
-//     }
-//     else 
-//     {
-//       yDir = false;
-//     }
-
-//     int xDelayTime = map(xValue, 0, 512, MaxStepDelay, MinStepDelay);
-//     int yDelayTime = map(yValue, 0, 512, MaxStepDelay, MinStepDelay);
-// /*
-//   Serial.println(xDelayTime);
-//   Serial.println("\t");
-//   Serial.println(yDelayTime);
-//   //Serial.println(micros());
-//   */
-    
-
-//   //nowTime = micros();
-//     if((micros() - xLastTime) > xDelayTime && xValue > noiseGate)
-//     {
-//       stepDelay(xDir, X_DIR, X_STP, xDelayTime);
-//       xLastTime = micros();
-//       //Serial.println("x");
-//     }
-
-//   //nowTime = micros();
-//     if((micros() - yLastTime) > yDelayTime && yValue > noiseGate)
-//     {
-//       stepDelay(yDir, Y_DIR, Y_STP, yDelayTime);
-//       yLastTime = micros();
-//     }
-//     int now = micros() - xLastTime;
-//     //Serial.println(now);
-//   }
-// }
-
-// void shoot()
-// {
-//   delay(300);
-//   digitalWrite (transistor, HIGH);
-//   delay(300);
-//   digitalWrite (transistor, LOW);
-
-// }
 
 void setup()
 {
@@ -203,15 +118,17 @@ void setup()
   // add as many as you need to process incoming strings from your web page
   // as you can imagine you will need to code some javascript in your web page to send such strings
   // this process will be documented in the SuperMon.h web page code
-  server.on("/UPDATE_SLIDER", UpdateSlider);
-  server.on("/BUTTON_MOVE", on_button_move);
-  server.on("/BUTTON_MEASURE", on_button_measure);
+  server.on("/B_MOVE", on_button_move);
+  server.on("/B_MEASURE", on_button_measure);
+  server.on("/B_SETFRAME", on_button_set_frame_size);
+  server.on("/B_SETFOCUS", on_button_set_scan_range);
+  server.on("/B_SCAN", on_button_scan);
 
   // finally begin the server
   server.begin();
 
   // - Init I/O Connections
- // pinMode(BUTTON_PIN, INPUT_PULLUP); // ToDO with arduino mega
+ // pinMode(B_PIN, INPUT_PULLUP); // ToDO with arduino mega
   // pinMode (transistor, OUTPUT);
   pinMode(X_DIR_PIN, OUTPUT); 
   pinMode(X_STEP_PIN,OUTPUT);  
@@ -220,14 +137,17 @@ void setup()
   // pinMode(EN, OUTPUT);
   // digitalWrite(EN,LOW);
 
-  mot_driver = make_shared<MotorDriver>();
+  x_frame_size = XSTEPSPERPICTURE;
+  y_frame_size = YSTEPSPERPICTURE;
+  z_frame_size = 0;
 
+  x_scan_range = XSCANRANGE;
+  y_scan_range = YSCANRANGE;
+  z_scan_range = ZSCANRANGE;
 
-  
- // auto joystick = new JoyStick();
-
-  delay (1000);
-
+//  delay (1000);
+  mot_driver = std::make_shared<MotorDriver>();
+  scanner = std::make_shared<Scanner>(mot_driver, TRANSISTOR);
 
 }
 
@@ -244,106 +164,36 @@ void loop()
 
   
 
-//   boolean xDir, yDir;
-//   float xValue, yValue;
 
-//   xDir = false;
-//   yDir = true;
-
-//   start:
-//   Serial.println("Start:");
-  
-//   delay(1000);
-//   int iy = 0;
-//   int ix=0;
- 
-//   if (!done)
-//   {
-//     for(iy = 0; iy < yFrames; ++iy)
-//     {
-//       for(ix = 0; ix < xFrames; ++ix)
-//       {
-//         Serial.println("x:");
-//         Serial.println(ix);
-        
-//         shoot();
-//         stepNumber(xDir, X_DIR, X_STP, XSTEPSPERPICTURE);
-
-//         if(digitalRead(ButtonPin) != HIGH)
-//         {
-//           manualDrive();
-//           goto start;
-//         }
-//       }
-//       Serial.println("y:");
-//       Serial.println(iy);
-//       shoot();
-//       stepNumber(yDir, Y_DIR, Y_STP, YSTEPSPERPICTURE);
-//       xDir = !xDir;
-//     }
-    
-//     for(ix = 0; ix < xFrames; ++ix)
-//     {
-//       Serial.println("x:");
-//       Serial.println(ix);
-//       shoot();
-//       stepNumber(xDir, X_DIR, X_STP, XSTEPSPERPICTURE);
-
-     
-//     Serial.println(digitalRead(ButtonPin));
-    
-//       if(digitalRead(ButtonPin) != HIGH)
-//       {
-//         manualDrive();
-//         goto start;
-//       }
-//     }
-//     done = true;
-//   }
-  
-//  shoot();
-//  //stepNumber(!xDir, X_DIR, X_STP, XSTEPSIZE);
-// // stepNumber(false, Y_DIR, Y_STP, YSTEPSIZE);
     
 }
 
-void UpdateSlider() {
+void on_button_scan() {
 
-  /*// many I hate strings, but wifi lib uses them...
-  String t_state = server.arg("VALUE");
-
-  // conver the string sent from the web page to an int
-  FanSpeed = t_state.toInt();
-  Serial.print("UpdateSlider"); Serial.println(FanSpeed);
-  // now set the PWM duty cycle
-  ledcWrite(0, FanSpeed);
-
-
-  // YOU MUST SEND SOMETHING BACK TO THE WEB PAGE--BASICALLY TO KEEP IT LIVE
-
-  // option 1: send no information back, but at least keep the page live
-  // just send nothing back
-  // server.send(200, "text/plain", ""); //Send web page
-
-  // option 2: send something back immediately, maybe a pass/fail indication, maybe a measured value
-  // here is how you send data back immediately and NOT through the general XML page update code
-  // my simple example guesses at fan speed--ideally measure it and send back real data
-  // i avoid strings at all caost, hence all the code to start with "" in the buffer and build a
-  // simple piece of data
-  FanRPM = map(FanSpeed, 0, 255, 0, 2400);
-  strcpy(buf, "");
-  sprintf(buf, "%d", FanRPM);
-  sprintf(buf, buf);
-
-  // now send it back
-  server.send(200, "text/plain", buf); //Send web page
-*/
+  scanner->set_scan_range( {x_scan_range, y_scan_range, z_scan_range} );
+  scanner->set_frame_size( {x_frame_size, y_frame_size, z_frame_size} );
+  scanner->scan();
 }
 
-// now process button_0 press from the web site. Typical applications are the used on the web client can
-// turn on / off a light, a fan, disable something etc
+void on_button_set_frame_size() {
+
+  x_frame_size = x_diff;
+  y_frame_size = y_diff;
+  z_frame_size = z_diff;
+
+  std::cout << "set frame size" << std::endl;
+}
+void on_button_set_scan_range() {
+
+  x_scan_range = x_diff;
+  y_scan_range = y_diff;
+  z_scan_range = z_diff;
+
+  std::cout << "set scan range" << std::endl;
+}
 
 void update_motor_position() {
+
   std::vector<int> pos = mot_driver->get_position();
   x_mot = pos.at(0);
   y_mot = pos.at(1);
@@ -368,30 +218,34 @@ void on_button_move() {
 
   server.send(200, "text/plain", "");
 
-  //auto stitcher = make_shared<Stitcher>(mot_driver);
+  //auto scanner = make_shared<Scanner>(mot_driver);
 
 }
 
 // same notion for processing button_1
 void on_button_measure() {
 
-  // just a simple way to toggle a LED on/off. Much better ways to do this
-  Serial.println("Button Measure press");
-
-  if (z_focus_measure_on)
+  if (measure_on)
   {
+    x_end = x_mot;
+    x_diff = x_end - x_start;
+    y_end = y_mot;
+    y_diff = y_end - y_start;
     z_end = z_mot;
-    z_focus_range = z_end - z_start;
+    z_diff = z_end - z_start;
     server.send(200, "text/plain", "Measure start");
   }
   else
   {
+    x_start = x_mot;
+    x_diff = 0;
+    y_start = y_mot;
+    y_diff = 0;
     z_start = z_mot;
-    z_focus_range = 0;
+    z_diff = 0;
     server.send(200, "text/plain", "Measure end");
   }
-
-  z_focus_measure_on = !z_focus_measure_on;
+  measure_on = !measure_on;
 }
 
 
@@ -425,13 +279,49 @@ void SendXML() {
   sprintf(buf, "<Z0>%d</Z0>\n", z_mot);
   strcat(XML, buf);
   // send Volts1
+  sprintf(buf, "<XS>%d</XS>\n", x_start);
+  strcat(XML, buf);
+
+  sprintf(buf, "<XE>%d</XE>\n", x_end);
+  strcat(XML, buf);
+
+  sprintf(buf, "<XD>%d</XD>\n", x_diff);
+  strcat(XML, buf);
+
+  sprintf(buf, "<XFS>%d</XFS>\n", x_frame_size);
+  strcat(XML, buf);
+
+  sprintf(buf, "<XSR>%d</XSR>\n", x_scan_range);
+  strcat(XML, buf);
+
+  sprintf(buf, "<YS>%d</YS>\n", y_start);
+  strcat(XML, buf);
+
+  sprintf(buf, "<YE>%d</YE>\n", y_end);
+  strcat(XML, buf);
+
+  sprintf(buf, "<YD>%d</YD>\n", y_diff);
+  strcat(XML, buf);
+
+  sprintf(buf, "<YFS>%d</YFS>\n", y_frame_size);
+  strcat(XML, buf);
+
+  sprintf(buf, "<YSR>%d</YSR>\n", y_scan_range);
+  strcat(XML, buf);
+
   sprintf(buf, "<ZS>%d</ZS>\n", z_start);
   strcat(XML, buf);
 
   sprintf(buf, "<ZE>%d</ZE>\n", z_end);
   strcat(XML, buf);
 
-  sprintf(buf, "<ZFR>%d</ZFR>\n", z_focus_range);
+  sprintf(buf, "<ZD>%d</ZD>\n", z_diff);
+  strcat(XML, buf);
+
+  sprintf(buf, "<ZFS>%d</ZFS>\n", z_frame_size);
+  strcat(XML, buf);
+
+  sprintf(buf, "<ZSR>%d</ZSR>\n", z_scan_range);
   strcat(XML, buf);
 
   strcat(XML, "</Data>\n");

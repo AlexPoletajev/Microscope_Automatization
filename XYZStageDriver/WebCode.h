@@ -63,7 +63,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html lang="en" class="js-focus-visible">
 
-<title>Web Page Update Demo</title>
+<title>Microscope Stage Controller</title>
 
   <style>
     table {
@@ -98,7 +98,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       transition: all 200ms ease-in-out;
       //background-color: #00AA00;
     }
-    .fanrpmslider {
+    .move_input {
       width: 05%;
       height: 55px;
       outline: none;
@@ -182,7 +182,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       text-decoration: none;
       display: inline-block;
       font-size: 16px;
-      margin: 4px 2px;
+      margin: 14px 12px;
       cursor: pointer;
     }
     .foot {
@@ -245,7 +245,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       <col span="2"style="background-color:rgb(0,0,0); color:#FFFFFF">
       <col span="2"style="background-color:rgb(0,0,0); color:#FFFFFF"> -->
       <tr>
-        <th colspan="1"><div class="heading">Motor</div></th>
+        <th colspan="1"><div class="heading"></div></th>
         <th colspan="1"><div class="heading">x</div></th>
         <th colspan="1"><div class="heading">y</div></th>
         <th colspan="1"><div class="heading">z</div></th>
@@ -265,13 +265,13 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
     <br>
     <div class="bodytext">x:  </div>
-    <input type="number" class="fanrpmslider" id = "x_steps" value = "0" width = "0%" "/>
+    <input type="number" class="move_input" id = "x_steps" value = "0" width = "0%" "/>
     <br>
     <div class="bodytext">y:  </div>
-    <input type="number" class="fanrpmslider" id = "y_steps" value = "0" width = "0%" "/>
+    <input type="number" class="move_input" id = "y_steps" value = "0" width = "0%" "/>
     <br>
     <div class="bodytext">z:  </div>
-    <input type="number" class="fanrpmslider" id = "z_steps" value = "0" width = "0%" "/>
+    <input type="number" class="move_input" id = "z_steps" value = "0" width = "0%" "/>
     <br>
     <br>
     <button type="button" name = "move" class = "btn" id = "btn0" onclick="ButtonPress0(x_steps.value, y_steps.value, z_steps.value)">move</button>
@@ -279,7 +279,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
     <br>
     <br>
-    <div class="bodytext">Measure focus range (z - axis [steps])</div>
+    <div class="bodytext">Measure scan range [steps]</div>
     <br>
     <br>
     <table style="width:50%">
@@ -287,20 +287,49 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <col span="1" style="background-color:rgb(230,230,230); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(200,200,200); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(180,180,180); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(150,150,150); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(0,100,0); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(0,100,0); width: 15%; color:#000000 ;">
       </colgroup>
       <tr>
+        <th colspan="1"><div class="heading"></div></th>
         <th colspan="1"><div class="heading">start</div></th>
         <th colspan="1"><div class="heading">end</div></th>
-        <th colspan="1"><div class="heading">focus range</div></th>
+        <th colspan="1"><div class="heading">diff</div></th>
+        <th colspan="1"><div class="heading">frame size</div></th>
+        <th colspan="1"><div class="heading">scan range</div></th>
       </tr>
       <tr>
+        <td><div class="bodytext">x</div></td>
+        <td><div class="tabledata" id = "xs"></div></td>
+        <td><div class="tabledata" id = "xe"></div></td>
+        <td><div class="tabledata" id = "xd"></div></td>
+        <td><div class="tabledata" id = "xfs"></div></td>
+        <td><div class="tabledata" id = "xsr"></div></td>
+      </tr>
+      <tr>
+        <td><div class="bodytext">y</div></td>
+        <td><div class="tabledata" id = "ys"></div></td>
+        <td><div class="tabledata" id = "ye"></div></td>
+        <td><div class="tabledata" id = "yd"></div></td>
+        <td><div class="tabledata" id = "yfs"></div></td>
+        <td><div class="tabledata" id = "ysr"></div></td>
+      </tr>
+      <tr>
+        <td><div class="bodytext">z</div></td>
         <td><div class="tabledata" id = "zs"></div></td>
         <td><div class="tabledata" id = "ze"></div></td>
-        <td><div class="tabledata" id = "zfr"></div></td>
+        <td><div class="tabledata" id = "zd"></div></td>
+        <td><div class="tabledata" id = "zfs"></div></td>
+        <td><div class="tabledata" id = "zsr"></div></td>
       </tr>
+      
       </table>
     <br>
     <button type="button" class = "btn" id = "btn1" onclick="ButtonPress1()">Measure start</button>
+    <button type="button" class = "btn" id = "btn2" onclick="set_frame_size()">Set frame size</button>
+    <button type="button" class = "btn" id = "btn3" onclick="set_scan_range()">Set scan range</button>
+            <button type="button" class = "btn" id = "btn4" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
     <br>
     <br>
@@ -353,7 +382,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       */
        
       var variables = "x_steps=" + value1 + "&" + "y_steps=" + value2 + "&" + "z_steps=" + value3;
-      xhttp.open("PUT", "BUTTON_MOVE?"+variables , true);
+      xhttp.open("PUT", "B_MOVE?"+variables , true);
       xhttp.send();
     }
 
@@ -367,7 +396,28 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         }
       }
       
-      xhttp.open("PUT", "BUTTON_MEASURE", false);
+      xhttp.open("PUT", "B_MEASURE", false);
+      xhttp.send(); 
+    }
+
+    function set_frame_size() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_SETFRAME", false);
+      xhttp.send(); 
+    }
+
+    function set_scan_range() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_SETFOCUS", false);
+      xhttp.send(); 
+    }
+
+    function scan() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_SCAN", false);
       xhttp.send(); 
     }
     
@@ -424,6 +474,56 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       message = xmldoc[0].firstChild.nodeValue;
       document.getElementById("z1").innerHTML=message;
       
+      // XS
+      xmldoc = xmlResponse.getElementsByTagName("XS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("xs").innerHTML=message;
+      
+      // XE
+      xmldoc = xmlResponse.getElementsByTagName("XE");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("xe").innerHTML=message;
+  
+      // XD
+      xmldoc = xmlResponse.getElementsByTagName("XD");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("xd").innerHTML=message;
+
+      // XFS
+      xmldoc = xmlResponse.getElementsByTagName("XFS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("xfs").innerHTML=message;
+
+      // XSR
+      xmldoc = xmlResponse.getElementsByTagName("XSR");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("xsr").innerHTML=message;
+
+      // YS
+      xmldoc = xmlResponse.getElementsByTagName("YS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("ys").innerHTML=message;
+      
+      // YE
+      xmldoc = xmlResponse.getElementsByTagName("YE");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("ye").innerHTML=message;
+  
+      // YD
+      xmldoc = xmlResponse.getElementsByTagName("YD");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("yd").innerHTML=message;
+
+      // YFS
+      xmldoc = xmlResponse.getElementsByTagName("YFS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("yfs").innerHTML=message;
+
+      // YSR
+      xmldoc = xmlResponse.getElementsByTagName("YSR");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("ysr").innerHTML=message;
+
       // ZS
       xmldoc = xmlResponse.getElementsByTagName("ZS");
       message = xmldoc[0].firstChild.nodeValue;
@@ -434,10 +534,20 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       message = xmldoc[0].firstChild.nodeValue;
       document.getElementById("ze").innerHTML=message;
   
-      // ZFR
-      xmldoc = xmlResponse.getElementsByTagName("ZFR");
+      // ZD
+      xmldoc = xmlResponse.getElementsByTagName("ZD");
       message = xmldoc[0].firstChild.nodeValue;
-      document.getElementById("zfr").innerHTML=message;
+      document.getElementById("zd").innerHTML=message;
+
+      // ZFS
+      xmldoc = xmlResponse.getElementsByTagName("ZFS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("zfs").innerHTML=message;
+
+      // ZSR
+      xmldoc = xmlResponse.getElementsByTagName("ZSR");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("zsr").innerHTML=message;
      }
   
     // general processing code for the web page to ask for an XML steam

@@ -11,6 +11,10 @@
 #define X_STEP_PIN        23
 #define Y_STEP_PIN        19
 #define Z_STEP_PIN        17
+
+#define TRANSISTOR         36
+#define XDIR               true;
+#define YDIR               false;
 /*
 // - Button
 #define BUTTON_PIN        A15
@@ -25,11 +29,12 @@
 
 #define EN 8
 
-// - Stitching
+// - Scanning
 #define XSTEPSPERPICTURE  860  //1000//968//1291
 #define YSTEPSPERPICTURE  300  //441//432//576
-#define XSTEPSIZE         26100
-#define YSTEPSIZE         5400  //5300
+#define XSCANRANGE         26100
+#define YSCANRANGE         5400  //5300
+#define ZSCANRANGE         0  //5300
 #define DELAY             2000
 #define XFRAMES           0
 #define YFRAMES           1
