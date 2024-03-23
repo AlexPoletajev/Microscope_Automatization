@@ -12,7 +12,7 @@
 #define Y_STEP_PIN        19
 #define Z_STEP_PIN        17
 
-#define TRANSISTOR         36
+#define TRANSISTOR         21
 #define XDIR               true;
 #define YDIR               false;
 /*
@@ -39,19 +39,6 @@
 #define XFRAMES           0
 #define YFRAMES           1
 
-
-// - Helper
-
-/*
-struct step_vec {
-  int x_steps;
-  int y_steps;
-  int z_steps;
-
-  step_vec(int x, int, y, int, z);
-};
-*/
-
 enum m_type { xMotor,
               yMotor,
               zMotor,
@@ -60,6 +47,5 @@ enum m_type { xMotor,
 extern std::map<m_type, std::pair<byte, byte>> motor_data;
 
 extern std::string enum2string(m_type t);
-
 
 #endif

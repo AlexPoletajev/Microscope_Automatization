@@ -1,30 +1,18 @@
-#include "Stitcher.h"
+#include "Scanner.h"
 #include "ControlRoom.h"
 
-/*std::vector<int> Scanner::measure_steps_between_A_B(){
-
-  std::vector<int> result{0,0,0};
-  auto start_pos = motor_driver->get_position();
-
-  // ... To Do ... //
-
-
-  return result;
-}*/
 void Scanner::shoot()
 {
-  /*
   delay(300);
   digitalWrite (transistor_pin, HIGH);
   delay(300);
   digitalWrite (transistor_pin, LOW);
-*/
+
   std::cout << "shoot();" << std::endl;
-
 }
-void Scanner::scan() {
 
-  
+void Scanner::scan() 
+{
   int x_steps_per_frame = 2 * frame_size.at(0) / 3;
   if (x_steps_per_frame < 1)
     x_steps_per_frame = 1;
@@ -40,10 +28,6 @@ void Scanner::scan() {
   bool x_direction = XDIR;
   bool y_direction = YDIR;
 
-  // std::cout << "motor_driver ptr: " << std::endl;
-  // std::cout << motor_driver.get() << std::endl;
-
-
   for (int i = 0; i < x_num_frames; ++i)
   {
     shoot();
@@ -57,14 +41,5 @@ void Scanner::scan() {
     y_direction = !y_direction;
   }
   shoot();
-  
-     
-    
   std::cout << "scan" << std::endl;
-
   }
-  
-//  shoot();
-//  //stepNumber(!xDir, X_DIR, X_STP, XSTEPSIZE);
-// // stepNumber(false, Y_DIR, Y_STP, YSTEPSIZE);
-

@@ -1,19 +1,15 @@
 #include "MotorDriver.h"
-#include "Stitcher.h"
+#include "Scanner.h"
 #include "JoyStick.h"
 #include <WiFi.h>       // standard library
 #include <WebServer.h>  // standard library
 #include "WebCode.h"   // .h file that stores your html page code
 
-// here you post web pages to your homes intranet which will make page debugging easier
-// as you just need to refresh the browser as opposed to reconnection to the web server
 #define USE_INTRANET
 
-// replace this with your homes intranet connect parameters
 #define LOCAL_SSID "Heimsucht"
 #define LOCAL_PASS "DasLebenIstSchoen"
 
-// once  you are read to go live these settings are what you client will connect to
 #define AP_SSID "MicroscopeStageController"
 #define AP_PASS "BH2"
 
@@ -50,17 +46,13 @@ IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 IPAddress ip;
 
-// gotta create a server
 WebServer server(80);
-//#include <memory>
 
 const int xFrames = 31;//XSCANRANGE / XSTEPSPERPICTURE + 1;
 const int yFrames = 19;//YSCANRANGE / YSTEPSPERPICTURE;
 
-// sate variable to track measuring procedure of z focus range
+// sate variable to track measuring procedure
 bool measure_on = false;
-
-
 
 using namespace std;
 std::shared_ptr<MotorDriver> mot_driver;
@@ -74,7 +66,7 @@ void setup()
   disableCore0WDT();
 
   // maybe disable watch dog timer 1 if needed
-  //  disableCore1WDT();
+  // disableCore1WDT();
 
   // just an update to progress
   Serial.println("starting server");
@@ -90,9 +82,6 @@ void setup()
   Actual_IP = WiFi.localIP();
 #endif
 
-  // if you don't have #define USE_INTRANET, here's where you will creat and access point
-  // an intranet with no internet connection. But Clients can connect to your intranet and see
-  // the web page you are about to serve up
 #ifndef USE_INTRANET
   WiFi.softAP(AP_SSID, AP_PASS);
   delay(100);
@@ -104,32 +93,20 @@ void setup()
 
   printWifiStatus();
 
-
-  // these calls will handle data coming back from your web page
-  // this one is a page request, upon ESP getting / string the web page will be sent
   server.on("/", SendWebsite);
-
-  // upon esp getting /XML string, ESP will build and send the XML, this is how we refresh
-  // just parts of the web page
   server.on("/xml", SendXML);
 
-  // upon ESP getting /UPDATE_SLIDER string, ESP will execute the UpdateSlider function
-  // same notion for the following .on calls
-  // add as many as you need to process incoming strings from your web page
-  // as you can imagine you will need to code some javascript in your web page to send such strings
-  // this process will be documented in the SuperMon.h web page code
   server.on("/B_MOVE", on_button_move);
   server.on("/B_MEASURE", on_button_measure);
   server.on("/B_SETFRAME", on_button_set_frame_size);
   server.on("/B_SETFOCUS", on_button_set_scan_range);
   server.on("/B_SCAN", on_button_scan);
 
-  // finally begin the server
   server.begin();
 
   // - Init I/O Connections
  // pinMode(B_PIN, INPUT_PULLUP); // ToDO with arduino mega
-  // pinMode (transistor, OUTPUT);
+  pinMode(TRANSISTOR, OUTPUT);
   pinMode(X_DIR_PIN, OUTPUT); 
   pinMode(X_STEP_PIN,OUTPUT);  
   pinMode(Y_DIR_PIN, OUTPUT); 
@@ -145,46 +122,30 @@ void setup()
   y_scan_range = YSCANRANGE;
   z_scan_range = ZSCANRANGE;
 
-//  delay (1000);
   mot_driver = std::make_shared<MotorDriver>();
-  scanner = std::make_shared<Scanner>(mot_driver, TRANSISTOR);
-
+  scanner = std::make_shared<Scanner>(mot_driver);
 }
 
 void loop()
 {
- 
-   server.handleClient();
-
-  // manualDrive();
-  
-
-  // -------------------- ------------------------ ----------------------- -------------------- //
-  // -------------------- ------------------------ ----------------------- -------------------- //
-
-  
-
-
-    
+   server.handleClient();  
 }
 
 void on_button_scan() {
-
   scanner->set_scan_range( {x_scan_range, y_scan_range, z_scan_range} );
   scanner->set_frame_size( {x_frame_size, y_frame_size, z_frame_size} );
   scanner->scan();
 }
 
 void on_button_set_frame_size() {
-
   x_frame_size = x_diff;
   y_frame_size = y_diff;
   z_frame_size = z_diff;
 
   std::cout << "set frame size" << std::endl;
 }
-void on_button_set_scan_range() {
 
+void on_button_set_scan_range() {
   x_scan_range = x_diff;
   y_scan_range = y_diff;
   z_scan_range = z_diff;
@@ -193,7 +154,6 @@ void on_button_set_scan_range() {
 }
 
 void update_motor_position() {
-
   std::vector<int> pos = mot_driver->get_position();
   x_mot = pos.at(0);
   y_mot = pos.at(1);
@@ -201,7 +161,6 @@ void update_motor_position() {
 }
 
 void on_button_move() {
-
   int x = server.arg("x_steps").toInt();
   int y = server.arg("y_steps").toInt();
   int z = server.arg("z_steps").toInt();
@@ -215,16 +174,11 @@ void on_button_move() {
   mot_driver->make_step_with_motor(zMotor, abs(z), dir, 5000);
   
   update_motor_position();
-
   server.send(200, "text/plain", "");
-
-  //auto scanner = make_shared<Scanner>(mot_driver);
-
 }
 
 // same notion for processing button_1
 void on_button_measure() {
-
   if (measure_on)
   {
     x_end = x_mot;
@@ -248,37 +202,26 @@ void on_button_measure() {
   measure_on = !measure_on;
 }
 
-
-// code to send the main web page
-// PAGE_MAIN is a large char defined in SuperMon.h
 void SendWebsite() {
 
   Serial.println("sending web page");
   // you may have to play with this value, big pages need more porcessing time, and hence
   // a longer timeout that 200 ms
   server.send(200, "text/html", PAGE_MAIN);
-
 }
 
-// code to send the main web page
-// I avoid string data types at all cost hence all the char mainipulation code
 void SendXML() {
-
-  // Serial.println("sending xml");
-
   strcpy(XML, "<?xml version = '1.0'?>\n<Data>\n");
 
-  // send bitsA0
   sprintf(buf, "<X0>%d</X0>\n", x_mot);
   strcat(XML, buf);
-  // send Volts0
+
   sprintf(buf, "<Y0>%d</Y0>\n", y_mot);
   strcat(XML, buf);
 
-  // send bits1
   sprintf(buf, "<Z0>%d</Z0>\n", z_mot);
   strcat(XML, buf);
-  // send Volts1
+
   sprintf(buf, "<XS>%d</XS>\n", x_start);
   strcat(XML, buf);
 
@@ -325,36 +268,29 @@ void SendXML() {
   strcat(XML, buf);
 
   strcat(XML, "</Data>\n");
-  // wanna see what the XML code looks like?
-  // actually print it to the serial monitor and use some text editor to get the size
-  // then pad and adjust char XML[2048]; above
+
   //Serial.println(XML);
 
   // you may have to play with this value, big pages need more porcessing time, and hence
   // a longer timeout that 200 ms
   server.send(200, "text/xml", XML);
-
-
 }
 
 // I think I got this code from the wifi example
 void printWifiStatus() {
 
-  // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
 
-  // print your WiFi shield's IP address:
   ip = WiFi.localIP();
   Serial.print("IP Address: ");
   Serial.println(ip);
 
-  // print the received signal strength:
   long rssi = WiFi.RSSI();
   Serial.print("signal strength (RSSI):");
   Serial.print(rssi);
   Serial.println(" dBm");
-  // print where to go in a browser:
+
   Serial.print("Open http://");
   Serial.println(ip);
 }
