@@ -34,10 +34,9 @@ public:
               << " and step_pin: " << static_cast<int>(step_pin) << std::endl;
   }
 
-
   void walk(const int &num_steps, const bool &direction, const int &delay_time);
   void go_to_position(const int pos);
-  const int get_position(){return position;};
+  const int get_position(){ return position; }
 };
 
 

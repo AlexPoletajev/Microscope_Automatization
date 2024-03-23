@@ -25,8 +25,9 @@
 #define PIN_A1 35     // some analog input sensor
 
 // variables to store measure data and sensor states
-int BitsA0 = 0, BitsA1 = 0;
-float VoltsA0 = 0, VoltsA1 = 0;
+int x_mot = 0, z_mot = 0, y_mot = 0;
+int z_start = 0, z_end = 0, z_focus_range = 0;
+
 int FanSpeed = 0;
 bool LED0 = false, SomeOutput = false;
 uint32_t SensorUpdate = 0;
@@ -54,6 +55,8 @@ WebServer server(80);
 const int xFrames = 31;//XSTEPSIZE / XSTEPSPERPICTURE + 1;
 const int yFrames = 19;//YSTEPSIZE / YSTEPSPERPICTURE;
 
+// sate variable to track measuring procedure of z focus range
+bool z_focus_measure_on = false;
 
 //Shutter
 const int transistor = 36;
@@ -65,30 +68,6 @@ shared_ptr<MotorDriver> mot_driver;
 //Stitcher * stitcher = new Stitcher();
  // auto joystick = new JoyStick();
 
-
-
-
-// void stepDelay(boolean dir, byte dirPin, byte stepperPin, int delayTime)
-// {
-//   digitalWrite(dirPin, dir);
-//   //delay(100);
-//   digitalWrite(stepperPin, HIGH);
-//   delayMicroseconds(delayTime);
-//   digitalWrite(stepperPin, LOW);
-//   delayMicroseconds(delayTime);
-// }
-
-// void stepNumber(boolean dir, byte dirPin, byte stepperPin, int steps)
-// {
-//   for (int i=0; i<steps; ++i)
-//   {
-//     digitalWrite(dirPin, dir);
-//     digitalWrite(stepperPin, HIGH);
-//     delayMicroseconds(delayTime);
-//     digitalWrite(stepperPin, LOW);
-//     delayMicroseconds(delayTime);
-//   }  
-// }
 
 // void manualDrive()
 // {
@@ -241,9 +220,6 @@ void setup()
   // pinMode(EN, OUTPUT);
   // digitalWrite(EN,LOW);
 
-
-  //auto mot_driver = new MotorDriver();
-  //shared_ptr<MotorDriver> mot_driver{new MotorDriver()};
   mot_driver = make_shared<MotorDriver>();
 
 
@@ -257,17 +233,9 @@ void setup()
 
 void loop()
 {
-    //mot_driver->make_step_with_motor(xMotor, 5000, true, 1000);
-    //mot_driver->make_step_with_motor(xMotor, 5000, true, 1000);
-//    return 0;
+ 
    server.handleClient();
-//  mot_driver[m_type.xMotor]->walk(50, -1, 10);
-// mot_driver = stitcher->own_the_mot_driver(mot_driver);
 
-
-
-  // Serial.println(xFrames);
-  // Serial.println(yFrames);
   // manualDrive();
   
 
@@ -374,6 +342,14 @@ void UpdateSlider() {
 
 // now process button_0 press from the web site. Typical applications are the used on the web client can
 // turn on / off a light, a fan, disable something etc
+
+void update_motor_position() {
+  std::vector<int> pos = mot_driver->get_position();
+  x_mot = pos.at(0);
+  y_mot = pos.at(1);
+  z_mot = pos.at(2);
+}
+
 void on_button_move() {
 
   int x = server.arg("x_steps").toInt();
@@ -388,67 +364,34 @@ void on_button_move() {
   dir = z > 0 ? true : false;
   mot_driver->make_step_with_motor(zMotor, abs(z), dir, 5000);
   
+  update_motor_position();
+
+  server.send(200, "text/plain", "");
+
   //auto stitcher = make_shared<Stitcher>(mot_driver);
-/*
-  std::cout << "x:  " << x << std::endl;
-  std::cout << "y:  " << y << std::endl;
-  std::cout << "z:  " << z << std::endl;*/
-  //
 
-/*
-
-  LED0 = !LED0;
-  // // digitalWrite(PIN_LED, LED0);
-  Serial.print("Button 0 "); Serial.println(LED0);
-  // regardless if you want to send stuff back to client or not
-  // you must have the send line--as it keeps the page running
-  // if you don't want feedback from the MCU--or let the XML manage
-  // sending feeback
-
-  // option 1 -- keep page live but dont send any thing
-  // here i don't need to send and immediate status, any status
-  // like the illumination status will be send in the main XML page update
-  // code
-  server.send(200, "text/plain", ""); //Send web page
-
-  // option 2 -- keep page live AND send a status
-  // if you want to send feed back immediataly
-  // note you must have reading code in the java script
-  /*
-    if (LED0) {
-    server.send(200, "text/plain", "1"); //Send web page
-    }
-    else {
-    server.send(200, "text/plain", "0"); //Send web page
-    }
-  */
 }
 
 // same notion for processing button_1
 void on_button_measure() {
 
   // just a simple way to toggle a LED on/off. Much better ways to do this
-  Serial.println("Button 1 press");
-  SomeOutput = !SomeOutput;
+  Serial.println("Button Measure press");
 
-  digitalWrite(PIN_OUTPUT, SomeOutput);
-Serial.print("Button 1 "); Serial.println(LED0);
-  // regardless if you want to send stuff back to client or not
-  // you must have the send line--as it keeps the page running
-  // if you don't want feedback from the MCU--or send all data via XML use this method
-  // sending feeback
-  server.send(200, "text/plain", ""); //Send web page
+  if (z_focus_measure_on)
+  {
+    z_end = z_mot;
+    z_focus_range = z_end - z_start;
+    server.send(200, "text/plain", "Measure start");
+  }
+  else
+  {
+    z_start = z_mot;
+    z_focus_range = 0;
+    server.send(200, "text/plain", "Measure end");
+  }
 
-  // if you want to send feed back immediataly
-  // note you must have proper code in the java script to read this data stream
-  /*
-    if (some_process) {
-    server.send(200, "text/plain", "SUCCESS"); //Send web page
-    }
-    else {
-    server.send(200, "text/plain", "FAIL"); //Send web page
-    }
-  */
+  z_focus_measure_on = !z_focus_measure_on;
 }
 
 
@@ -472,39 +415,30 @@ void SendXML() {
   strcpy(XML, "<?xml version = '1.0'?>\n<Data>\n");
 
   // send bitsA0
-  sprintf(buf, "<B0>%d</B0>\n", BitsA0);
+  sprintf(buf, "<X0>%d</X0>\n", x_mot);
   strcat(XML, buf);
   // send Volts0
-  sprintf(buf, "<V0>%d.%d</V0>\n", (int) (VoltsA0), abs((int) (VoltsA0 * 10)  - ((int) (VoltsA0) * 10)));
+  sprintf(buf, "<Y0>%d</Y0>\n", y_mot);
   strcat(XML, buf);
 
   // send bits1
-  sprintf(buf, "<B1>%d</B1>\n", BitsA1);
+  sprintf(buf, "<Z0>%d</Z0>\n", z_mot);
   strcat(XML, buf);
   // send Volts1
-  sprintf(buf, "<V1>%d.%d</V1>\n", (int) (VoltsA1), abs((int) (VoltsA1 * 10)  - ((int) (VoltsA1) * 10)));
+  sprintf(buf, "<ZS>%d</ZS>\n", z_start);
   strcat(XML, buf);
 
-  // show led0 status
-  if (LED0) {
-    strcat(XML, "<LED>1</LED>\n");
-  }
-  else {
-    strcat(XML, "<LED>0</LED>\n");
-  }
+  sprintf(buf, "<ZE>%d</ZE>\n", z_end);
+  strcat(XML, buf);
 
-  if (SomeOutput) {
-    strcat(XML, "<SWITCH>1</SWITCH>\n");
-  }
-  else {
-    strcat(XML, "<SWITCH>0</SWITCH>\n");
-  }
+  sprintf(buf, "<ZFR>%d</ZFR>\n", z_focus_range);
+  strcat(XML, buf);
 
   strcat(XML, "</Data>\n");
   // wanna see what the XML code looks like?
   // actually print it to the serial monitor and use some text editor to get the size
   // then pad and adjust char XML[2048]; above
- // Serial.println(XML);
+  //Serial.println(XML);
 
   // you may have to play with this value, big pages need more porcessing time, and hence
   // a longer timeout that 200 ms

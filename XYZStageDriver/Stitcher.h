@@ -16,9 +16,11 @@ struct joy_stick_data {
   int z_value;
 };
 
+
 class Stitcher {
 
   std::shared_ptr<MotorDriver> motor_driver{ nullptr };
+  int focal_range{0};
 
 public:
 
@@ -28,13 +30,13 @@ public:
     motor_driver.swap(mot_driver);
 
     /* To Do */
-
-
     return motor_driver;
   }
 
   ~Stitcher(){};
 
+  void set_focal_range( int value) { focal_range = value; }
+  int get_focal_range() { return focal_range; }
   //Stitcher(const )
   std::vector<int> Stitch();
   std::vector<int> measure_steps_between_A_B();

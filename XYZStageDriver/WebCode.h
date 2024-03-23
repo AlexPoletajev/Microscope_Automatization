@@ -96,7 +96,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       color: #FFFFFF;
       line-height: 20px;
       transition: all 200ms ease-in-out;
-      background-color: #00AA00;
+      //background-color: #00AA00;
     }
     .fanrpmslider {
       width: 05%;
@@ -218,7 +218,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <header>
       <div class="navbar fixed-top">
           <div class="container">
-            <div class="navtitle">Microscope Stage Controler</div>
+            <div class="navtitle">Microscope Stage Controller</div>
             <div class="navdata" id = "date">mm/dd/yyyy</div>
             <div class="navheading">DATE</div><br>
             <div class="navdata" id = "time">00:00:00</div>
@@ -237,28 +237,24 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <col span="1" style="background-color:rgb(230,230,230); width: 20%; color:#000000 ;">
         <col span="1" style="background-color:rgb(200,200,200); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(180,180,180); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(150,150,150); width: 15%; color:#000000 ;">
       </colgroup>
+      <!-- 
       <col span="2"style="background-color:rgb(0,0,0); color:#FFFFFF">
       <col span="2"style="background-color:rgb(0,0,0); color:#FFFFFF">
       <col span="2"style="background-color:rgb(0,0,0); color:#FFFFFF">
+      <col span="2"style="background-color:rgb(0,0,0); color:#FFFFFF"> -->
       <tr>
-        <th colspan="1"><div class="heading">Pin</div></th>
-        <th colspan="1"><div class="heading">Bits</div></th>
-        <th colspan="1"><div class="heading">Volts</div></th>
+        <th colspan="1"><div class="heading">Motor</div></th>
+        <th colspan="1"><div class="heading">x</div></th>
+        <th colspan="1"><div class="heading">y</div></th>
+        <th colspan="1"><div class="heading">z</div></th>
       </tr>
       <tr>
-        <td><div class="bodytext">Analog pin 34</div></td>
-        <td><div class="tabledata" id = "b0"></div></td>
-        <td><div class="tabledata" id = "v0"></div></td>
-      </tr>
-      <tr>
-        <td><div class="bodytext">Analog pin 35</div></td>
-        <td><div class="tabledata" id = "b1"></div></td>
-        <td><div class="tabledata" id = "v1"></div></td>
-      </tr>
-        <tr>
-        <td><div class="bodytext">Digital switch</div></td>
-        <td><div class="tabledata" id = "switch"></div></td>
+        <td><div class="bodytext">Position</div></td>
+        <td><div class="tabledata" id = "x1"></div></td>
+        <td><div class="tabledata" id = "y1"></div></td>
+        <td><div class="tabledata" id = "z1"></div></td>
       </tr>
       </table>
     </div>
@@ -283,8 +279,28 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
     <br>
     <br>
-    // <div class="bodytext">Measure</div>
-    <button type="button" class = "btn" id = "btn1" onclick="ButtonPress1()">Measure</button>
+    <div class="bodytext">Measure focus range (z - axis [steps])</div>
+    <br>
+    <br>
+    <table style="width:50%">
+      <colgroup>
+        <col span="1" style="background-color:rgb(230,230,230); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(200,200,200); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(180,180,180); width: 15%; color:#000000 ;">
+      </colgroup>
+      <tr>
+        <th colspan="1"><div class="heading">start</div></th>
+        <th colspan="1"><div class="heading">end</div></th>
+        <th colspan="1"><div class="heading">focus range</div></th>
+      </tr>
+      <tr>
+        <td><div class="tabledata" id = "zs"></div></td>
+        <td><div class="tabledata" id = "ze"></div></td>
+        <td><div class="tabledata" id = "zfr"></div></td>
+      </tr>
+      </table>
+    <br>
+    <button type="button" class = "btn" id = "btn1" onclick="ButtonPress1()">Measure start</button>
     </div>
     <br>
     <br>
@@ -319,6 +335,8 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     function ButtonPress0(value1, value2, value3) {
       var xhttp = new XMLHttpRequest(); 
       var message;
+
+      //document.getElementById("btn0").style.background = '#444444';
       // if you want to handle an immediate reply (like status from the ESP
       // handling of the button press use this code
       // since this button status from the ESP is in the main XML code
@@ -339,19 +357,16 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       xhttp.send();
     }
 
-
-    // function to handle button press from HTML code above
-    // and send a processing string back to server
-    // this processing string is use in the .on method
     function ButtonPress1() {
       var xhttp = new XMLHttpRequest(); 
-      /*
+
       xhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
-          document.getElementById("button1").innerHTML = this.responseText;
+          // update the web based on reply from  ESP
+          document.getElementById("btn1").innerHTML=this.responseText;
         }
       }
-      */
+      
       xhttp.open("PUT", "BUTTON_MEASURE", false);
       xhttp.send(); 
     }
@@ -394,79 +409,35 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       document.getElementById("time").innerHTML = dt.toLocaleTimeString();
       document.getElementById("date").innerHTML = dt.toLocaleDateString();
   
-      // A0
-      xmldoc = xmlResponse.getElementsByTagName("B0"); //bits for A0
+      // X0
+      xmldoc = xmlResponse.getElementsByTagName("X0"); //bits for A0
       message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("x1").innerHTML=message;
       
-      if (message > 2048){
-      color = "#aa0000";
-      }
-      else {
-        color = "#0000aa";
-      }
-      
-      barwidth = message / 40.95;
-      document.getElementById("b0").innerHTML=message;
-      document.getElementById("b0").style.width=(barwidth+"%");
-      // if you want to use global color set above in <style> section
-      // other wise uncomment and let the value dictate the color
-      //document.getElementById("b0").style.backgroundColor=color;
-      //document.getElementById("b0").style.borderRadius="5px";
-      
-      xmldoc = xmlResponse.getElementsByTagName("V0"); //volts for A0
+      // Y0
+      xmldoc = xmlResponse.getElementsByTagName("Y0"); //volts for A0
       message = xmldoc[0].firstChild.nodeValue;
-      document.getElementById("v0").innerHTML=message;
-      document.getElementById("v0").style.width=(barwidth+"%");
-      // you can set color dynamically, maybe blue below a value, red above
-      document.getElementById("v0").style.backgroundColor=color;
-      //document.getElementById("v0").style.borderRadius="5px";
+      document.getElementById("y1").innerHTML=message;
   
-      // A1
-      xmldoc = xmlResponse.getElementsByTagName("B1");
+      // Z0
+      xmldoc = xmlResponse.getElementsByTagName("Z0");
       message = xmldoc[0].firstChild.nodeValue;
-      if (message > 2048){
-      color = "#aa0000";
-      }
-      else {
-        color = "#0000aa";
-      }
-      document.getElementById("b1").innerHTML=message;
-      width = message / 40.95;
-      document.getElementById("b1").style.width=(width+"%");
-      document.getElementById("b1").style.backgroundColor=color;
-      //document.getElementById("b1").style.borderRadius="5px";
+      document.getElementById("z1").innerHTML=message;
       
-      xmldoc = xmlResponse.getElementsByTagName("V1");
+      // ZS
+      xmldoc = xmlResponse.getElementsByTagName("ZS");
       message = xmldoc[0].firstChild.nodeValue;
-      document.getElementById("v1").innerHTML=message;
-      document.getElementById("v1").style.width=(width+"%");
-      document.getElementById("v1").style.backgroundColor=color;
-      //document.getElementById("v1").style.borderRadius="5px";
+      document.getElementById("zs").innerHTML=message;
+      
+      // ZE
+      xmldoc = xmlResponse.getElementsByTagName("ZE");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("ze").innerHTML=message;
   
-      // xmldoc = xmlResponse.getElementsByTagName("LED");
-      // message = xmldoc[0].firstChild.nodeValue;
-  
-      // if (message == 0){
-      //   document.getElementById("btn0").innerHTML="Turn ON";
-      // }
-      // else{
-      //   document.getElementById("btn0").innerHTML="Turn OFF";
-      // }
-         
-      // xmldoc = xmlResponse.getElementsByTagName("SWITCH");
-      // message = xmldoc[0].firstChild.nodeValue;
-      // document.getElementById("switch").style.backgroundColor="rgb(200,200,200)";
-      // // update the text in the table
-      // if (message == 0){
-      //   document.getElementById("switch").innerHTML="Switch is OFF";
-      //   document.getElementById("btn1").innerHTML="Turn ON";
-      //   document.getElementById("switch").style.color="#0000AA"; 
-      // }
-      // else {
-      //   document.getElementById("switch").innerHTML="Switch is ON";
-      //   document.getElementById("btn1").innerHTML="Turn OFF";
-      //   document.getElementById("switch").style.color="#00AA00";
-      // }
+      // ZFR
+      xmldoc = xmlResponse.getElementsByTagName("ZFR");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("zfr").innerHTML=message;
      }
   
     // general processing code for the web page to ask for an XML steam
