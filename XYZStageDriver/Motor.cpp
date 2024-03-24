@@ -26,8 +26,6 @@ void Motor::step() {
   delayMicroseconds(delay_time);
 }
 
-/* --- .cpp--- --- */
-
 void Motor::walk(const int &num_steps, const bool &direction, const int &delay_time) {
 
   digitalWrite(dir_pin, direction);
@@ -40,7 +38,8 @@ void Motor::walk(const int &num_steps, const bool &direction, const int &delay_t
     position += position_modifier; // - opti ?
   }
 
-  std::cout<< enum2string(this->type) << " walked " << num_steps << " steps" << std::endl;
+  std::cout<< enum2string(this->type) << " walked "
+  << position_modifier * num_steps << " steps" << std::endl;
 }
 
 void Motor::go_to_position(const int pos) {

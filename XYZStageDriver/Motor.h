@@ -9,7 +9,6 @@
 #include "ControlRoom.h"
 
 class Motor {
-
   m_type type;
 
   int id;
@@ -22,7 +21,6 @@ class Motor {
   void step();
   
 public:
-
   ~Motor() = default;
 
   Motor(const m_type &type, const std::pair<byte, byte> &pin_data)

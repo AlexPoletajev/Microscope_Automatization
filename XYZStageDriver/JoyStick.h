@@ -5,7 +5,6 @@
 
 
 class JoyStick {
-
   std::shared_ptr<MotorDriver> motor_driver{ nullptr };
 
 public:

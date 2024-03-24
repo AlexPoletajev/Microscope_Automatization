@@ -20,6 +20,7 @@ class Scanner {
   int focal_range{0};
   std::vector<int> scan_range;
   std::vector<int> frame_size;
+  std::vector<int> start_coordinates;
   int transistor_pin{0};
 
 public:

@@ -265,10 +265,10 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
     <br>
     <div class="bodytext">x:  </div>
-    <input type="number" class="move_input" id = "x_steps" value = "0" width = "0%" "/>
+    <input type="number" class="move_input" id = "x_steps" value = "10" width = "0%" "/>
     <br>
     <div class="bodytext">y:  </div>
-    <input type="number" class="move_input" id = "y_steps" value = "0" width = "0%" "/>
+    <input type="number" class="move_input" id = "y_steps" value = "10" width = "0%" "/>
     <br>
     <div class="bodytext">z:  </div>
     <input type="number" class="move_input" id = "z_steps" value = "0" width = "0%" "/>

@@ -5,16 +5,17 @@
 #define DEBUG  
 
 // -  Motor
-#define X_DIR_PIN         22
-#define Y_DIR_PIN         18
+#define X_DIR_PIN         18
+#define Y_DIR_PIN         22
 #define Z_DIR_PIN         16
-#define X_STEP_PIN        23
-#define Y_STEP_PIN        19
+#define X_STEP_PIN        19
+#define Y_STEP_PIN        23
 #define Z_STEP_PIN        17
 
 #define TRANSISTOR         21
-#define XDIR               true;
-#define YDIR               false;
+const bool XDIR  =         true;
+const bool YDIR  =         true;
+const bool ZDIR  =         true;
 /*
 // - Button
 #define BUTTON_PIN        A15
@@ -30,14 +31,14 @@
 #define EN 8
 
 // - Scanning
-#define XSTEPSPERPICTURE  860  //1000//968//1291
-#define YSTEPSPERPICTURE  300  //441//432//576
-#define XSCANRANGE         26100
-#define YSCANRANGE         5400  //5300
-#define ZSCANRANGE         0  //5300
+#define XSTEPSPERPICTURE  412
+#define YSTEPSPERPICTURE  260
+#define XSCANRANGE        6540
+#define YSCANRANGE        1320
+#define ZSCANRANGE        0
 #define DELAY             2000
-#define XFRAMES           0
-#define YFRAMES           1
+#define XFRAMES           412
+#define YFRAMES           260
 
 enum m_type { xMotor,
               yMotor,

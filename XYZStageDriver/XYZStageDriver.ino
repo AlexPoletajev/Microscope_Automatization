@@ -166,11 +166,11 @@ void on_button_move() {
   int z = server.arg("z_steps").toInt();
 
   bool dir = false;
-  dir = x > 0 ? true : false;
+  dir = x > 0 ? XDIR : !XDIR;
   mot_driver->make_step_with_motor(xMotor, abs(x), dir, 5000);
-  dir = y > 0 ? true : false;
+  dir = y > 0 ? YDIR : !YDIR;
   mot_driver->make_step_with_motor(yMotor, abs(y), dir, 5000);
-  dir = z > 0 ? true : false;
+  dir = z > 0 ? ZDIR : !ZDIR;
   mot_driver->make_step_with_motor(zMotor, abs(z), dir, 5000);
   
   update_motor_position();
