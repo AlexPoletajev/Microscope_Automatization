@@ -12,7 +12,7 @@
 #define Y_STEP_PIN        23
 #define Z_STEP_PIN        17
 
-#define TRANSISTOR         21
+#define TRANSISTOR         5
 const bool XDIR  =         true;
 const bool YDIR  =         true;
 const bool ZDIR  =         true;

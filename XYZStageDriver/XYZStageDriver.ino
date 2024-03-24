@@ -111,6 +111,8 @@ void setup()
   pinMode(X_STEP_PIN,OUTPUT);  
   pinMode(Y_DIR_PIN, OUTPUT); 
   pinMode(Y_STEP_PIN,OUTPUT);
+  pinMode(Z_DIR_PIN, OUTPUT); 
+  pinMode(Z_STEP_PIN,OUTPUT);
   // pinMode(EN, OUTPUT);
   // digitalWrite(EN,LOW);
 

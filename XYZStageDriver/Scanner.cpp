@@ -3,10 +3,10 @@
 
 void Scanner::shoot()
 {
-  // // delay(300);
-  // digitalWrite (transistor_pin, HIGH);
-  // delay(300);
-  // digitalWrite (transistor_pin, LOW);
+  delay(300);
+  digitalWrite (transistor_pin, HIGH);
+  delay(300);
+  digitalWrite (transistor_pin, LOW);
 
   std::cout << "shoot();" << std::endl;
 }
@@ -44,8 +44,8 @@ void Scanner::scan()
   bool x_direction = XDIR;
   bool y_direction = YDIR;
 
-  // y_steps_per_frame = x_steps_per_frame = 200;
-  // x_num_frames = y_num_frames = 2;
+  y_steps_per_frame = x_steps_per_frame = 200;
+  x_num_frames = y_num_frames = 2;
   for (int i = 0; i <= x_num_frames; ++i)
   {
     shoot();
@@ -60,6 +60,6 @@ void Scanner::scan()
       motor_driver->make_step_with_motor(xMotor, x_steps_per_frame, x_direction, 5000);
   }
 
-  //motor_driver->go_to_position(start_coordinates);
+  motor_driver->go_to_position(start_coordinates);
   std::cout << "scanning done" << std::endl;
 }
