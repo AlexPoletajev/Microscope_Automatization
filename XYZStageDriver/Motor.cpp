@@ -33,13 +33,13 @@ void Motor::walk(const int &num_steps, const bool &direction, const int &delay_t
 
   int position_modifier = (direction == true) ? 1 : -1;
 
-  for (int i = 0; i < num_steps; ++i) {
+  for (int i = 0; i < abs(num_steps); ++i) {
     step();
     position += position_modifier; // - opti ?
   }
 
   std::cout<< enum2string(this->type) << " walked "
-  << position_modifier * num_steps << " steps" << std::endl;
+  << position_modifier * abs(num_steps) << " steps" << std::endl;
 }
 
 void Motor::go_to_position(const int pos) {

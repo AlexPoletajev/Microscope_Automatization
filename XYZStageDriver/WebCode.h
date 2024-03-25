@@ -290,6 +290,8 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <col span="1" style="background-color:rgb(150,150,150); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(0,100,0); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(0,100,0); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(0,60,0); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(0,60,0); width: 15%; color:#000000 ;">
       </colgroup>
       <tr>
         <th colspan="1"><div class="heading"></div></th>
@@ -298,6 +300,8 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <th colspan="1"><div class="heading">diff</div></th>
         <th colspan="1"><div class="heading">frame size</div></th>
         <th colspan="1"><div class="heading">scan range</div></th>
+        <th colspan="1"><div class="heading">x focus range</div></th>
+        <th colspan="1"><div class="heading">y focus range</div></th>
       </tr>
       <tr>
         <td><div class="bodytext">x</div></td>
@@ -322,6 +326,8 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <td><div class="tabledata" id = "zd"></div></td>
         <td><div class="tabledata" id = "zfs"></div></td>
         <td><div class="tabledata" id = "zsr"></div></td>
+        <td><div class="tabledata" id = "xfr"></div></td>
+        <td><div class="tabledata" id = "yfr"></div></td>
       </tr>
       
       </table>
@@ -329,7 +335,9 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <button type="button" class = "btn" id = "btn1" onclick="ButtonPress1()">Measure start</button>
     <button type="button" class = "btn" id = "btn2" onclick="set_frame_size()">Set frame size</button>
     <button type="button" class = "btn" id = "btn3" onclick="set_scan_range()">Set scan range</button>
-            <button type="button" class = "btn" id = "btn4" onclick="scan()" style="background-color: #006400;" >Scan</button>
+    <button type="button" class = "btn" id = "btn5" onclick="set_x_focus_range()">Set x focus range</button>
+    <button type="button" class = "btn" id = "btn6" onclick="set_y_focus_range()">Set y focus range</button>
+    <button type="button" class = "btn" id = "btn4" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
     <br>
     <br>
@@ -410,7 +418,21 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     function set_scan_range() {
       var xhttp = new XMLHttpRequest(); 
       
-      xhttp.open("PUT", "B_SETFOCUS", false);
+      xhttp.open("PUT", "B_SCANRANGE", false);
+      xhttp.send(); 
+    }
+
+    function set_x_focus_range() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_SETXFOCUS", false);
+      xhttp.send(); 
+    }
+
+    function set_y_focus_range() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_SETYFOCUS", false);
       xhttp.send(); 
     }
 
@@ -548,6 +570,16 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       xmldoc = xmlResponse.getElementsByTagName("ZSR");
       message = xmldoc[0].firstChild.nodeValue;
       document.getElementById("zsr").innerHTML=message;
+
+      // XFR
+      xmldoc = xmlResponse.getElementsByTagName("XFR");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("xfr").innerHTML=message;
+
+      // YFR
+      xmldoc = xmlResponse.getElementsByTagName("YFR");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("yfr").innerHTML=message;
      }
   
     // general processing code for the web page to ask for an XML steam

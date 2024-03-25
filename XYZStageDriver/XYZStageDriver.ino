@@ -25,6 +25,7 @@ int x_mot = 0, z_mot = 0, y_mot = 0;
 int x_start = 0, x_end = 0, x_diff = 0, x_scan_range = 0, x_frame_size = 0;
 int y_start = 0, y_end = 0, y_diff = 0, y_scan_range = 0, y_frame_size = 0;
 int z_start = 0, z_end = 0, z_diff = 0, z_scan_range = 0, z_frame_size = 0;
+int x_focus_range = 0, y_focus_range = 0;
 
 int FanSpeed = 0;
 bool LED0 = false, SomeOutput = false;
@@ -99,13 +100,14 @@ void setup()
   server.on("/B_MOVE", on_button_move);
   server.on("/B_MEASURE", on_button_measure);
   server.on("/B_SETFRAME", on_button_set_frame_size);
-  server.on("/B_SETFOCUS", on_button_set_scan_range);
+  server.on("/B_SETXFOCUS", on_button_set_x_focus_range);
+  server.on("/B_SETYFOCUS", on_button_set_y_focus_range);
+  server.on("/B_SCANRANGE", on_button_set_scan_range);
   server.on("/B_SCAN", on_button_scan);
 
   server.begin();
 
   // - Init I/O Connections
- // pinMode(B_PIN, INPUT_PULLUP); // ToDO with arduino mega
   pinMode(TRANSISTOR, OUTPUT);
   pinMode(X_DIR_PIN, OUTPUT); 
   pinMode(X_STEP_PIN,OUTPUT);  
@@ -113,12 +115,13 @@ void setup()
   pinMode(Y_STEP_PIN,OUTPUT);
   pinMode(Z_DIR_PIN, OUTPUT); 
   pinMode(Z_STEP_PIN,OUTPUT);
-  // pinMode(EN, OUTPUT);
-  // digitalWrite(EN,LOW);
 
   x_frame_size = XSTEPSPERPICTURE;
   y_frame_size = YSTEPSPERPICTURE;
   z_frame_size = 0;
+
+  x_focus_range = ZSCANRANGE;
+  y_focus_range = ZSCANRANGE;
 
   x_scan_range = XSCANRANGE;
   y_scan_range = YSCANRANGE;
@@ -134,6 +137,7 @@ void loop()
 }
 
 void on_button_scan() {
+  scanner->set_focus_range( {x_focus_range, y_focus_range } );
   scanner->set_scan_range( {x_scan_range, y_scan_range, z_scan_range} );
   scanner->set_frame_size( {x_frame_size, y_frame_size, z_frame_size} );
   scanner->scan();
@@ -145,6 +149,18 @@ void on_button_set_frame_size() {
   z_frame_size = z_diff;
 
   std::cout << "set frame size" << std::endl;
+}
+
+void on_button_set_x_focus_range() {
+  x_focus_range = z_diff;
+
+  std::cout << "set z x focus range" << std::endl;
+}
+
+void on_button_set_y_focus_range() {
+  y_focus_range = z_diff;
+
+  std::cout << "set z y focus range" << std::endl;
 }
 
 void on_button_set_scan_range() {
@@ -169,11 +185,11 @@ void on_button_move() {
 
   bool dir = false;
   dir = x > 0 ? XDIR : !XDIR;
-  mot_driver->make_step_with_motor(xMotor, abs(x), dir, 5000);
+  mot_driver->make_step_with_motor(xMotor, abs(x), dir, DELAY);
   dir = y > 0 ? YDIR : !YDIR;
-  mot_driver->make_step_with_motor(yMotor, abs(y), dir, 5000);
+  mot_driver->make_step_with_motor(yMotor, abs(y), dir, DELAY);
   dir = z > 0 ? ZDIR : !ZDIR;
-  mot_driver->make_step_with_motor(zMotor, abs(z), dir, 5000);
+  mot_driver->make_step_with_motor(zMotor, abs(z), dir, ZDELAY);
   
   update_motor_position();
   server.send(200, "text/plain", "");
@@ -267,6 +283,12 @@ void SendXML() {
   strcat(XML, buf);
 
   sprintf(buf, "<ZSR>%d</ZSR>\n", z_scan_range);
+  strcat(XML, buf);
+
+  sprintf(buf, "<XFR>%d</XFR>\n", x_focus_range);
+  strcat(XML, buf);
+
+  sprintf(buf, "<YFR>%d</YFR>\n", y_focus_range);
   strcat(XML, buf);
 
   strcat(XML, "</Data>\n");
