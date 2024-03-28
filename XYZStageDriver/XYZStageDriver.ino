@@ -103,6 +103,8 @@ void setup()
   server.on("/B_SETXFOCUS", on_button_set_x_focus_range);
   server.on("/B_SETYFOCUS", on_button_set_y_focus_range);
   server.on("/B_SCANRANGE", on_button_set_scan_range);
+  server.on("/B_DRIVEXRANGE", on_button_drive_x_scan_range);
+  server.on("/B_DRIVEYRANGE", on_button_drive_y_scan_range);
   server.on("/B_SCAN", on_button_scan);
 
   server.begin();
@@ -169,6 +171,26 @@ void on_button_set_scan_range() {
   z_scan_range = z_diff;
 
   std::cout << "set scan range" << std::endl;
+}
+
+void on_button_drive_x_scan_range() {
+  bool dir = false;
+  dir = x_scan_range > 0 ? XDIR : !XDIR;
+  mot_driver->make_step_with_motor(xMotor, abs(x_scan_range), dir, DELAY);
+  dir = x_focus_range > 0 ? ZDIR : !ZDIR;
+  mot_driver->make_step_with_motor(zMotor, abs(x_scan_range), dir, DELAY);
+
+  std::cout << "drive x scan range" << std::endl;
+}
+
+void on_button_drive_y_scan_range() {
+  bool dir = false;
+  dir = y_scan_range > 0 ? YDIR : !YDIR;
+  mot_driver->make_step_with_motor(yMotor, abs(y_scan_range), dir, DELAY);
+    dir = y_focus_range > 0 ? ZDIR : !ZDIR;
+  mot_driver->make_step_with_motor(zMotor, abs(y_focus_range), dir, DELAY);
+  
+  std::cout << "drive y scan range" << std::endl;
 }
 
 void update_motor_position() {

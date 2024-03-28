@@ -31,6 +31,12 @@ void Scanner::scan()
   int y_num_frames = scan_range.at(1) / y_steps_per_frame;
   y_steps_per_frame = scan_range.at(1) / y_num_frames;
 
+  int x_correction{0}, y_correction{0};
+  if ( (scan_range.at(0) - x_steps_per_frame * x_num_frames) > (frame_size.at(0) / 6) )
+    x_correction = scan_range.at(0) - x_steps_per_frame * x_num_frames;
+  if ( (scan_range.at(1) - y_steps_per_frame * y_num_frames) > (frame_size.at(1) / 6) )
+    y_correction = scan_range.at(0) - y_steps_per_frame * y_num_frames;
+
   bool x_direction = XDIR;
   bool y_direction = YDIR;
 
@@ -64,12 +70,14 @@ void Scanner::scan()
       motor_driver->make_step_with_motor(zMotor, z_y_steps_per_frame, z_y_direction, ZDELAY);
       shoot();
     }
+    motor_driver->make_step_with_motor(yMotor, y_correction, y_direction, DELAY);
     y_direction = !y_direction;
     z_y_direction = !z_y_direction;
 
     if(i < x_num_frames)
     {
       motor_driver->make_step_with_motor(xMotor, x_steps_per_frame, x_direction, DELAY);
+      motor_driver->make_step_with_motor(yMotor, x_correction, y_direction, DELAY);
       motor_driver->make_step_with_motor(zMotor, z_x_steps_per_frame, z_x_direction, ZDELAY);
     }
   }

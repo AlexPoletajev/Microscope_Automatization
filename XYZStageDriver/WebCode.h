@@ -337,6 +337,9 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <button type="button" class = "btn" id = "btn3" onclick="set_scan_range()">Set scan range</button>
     <button type="button" class = "btn" id = "btn5" onclick="set_x_focus_range()">Set x focus range</button>
     <button type="button" class = "btn" id = "btn6" onclick="set_y_focus_range()">Set y focus range</button>
+    <br>
+    <button type="button" class = "btn" id = "btn7" onclick="drive_x_scan_range()">drive x range</button>
+    <button type="button" class = "btn" id = "btn8" onclick="drive_y_scan_range()">drive y range</button>
     <button type="button" class = "btn" id = "btn4" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
     <br>
@@ -433,6 +436,20 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       var xhttp = new XMLHttpRequest(); 
       
       xhttp.open("PUT", "B_SETYFOCUS", false);
+      xhttp.send(); 
+    }
+
+    function drive_x_scan_range() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_DRIVEXRANGE", false);
+      xhttp.send(); 
+    }
+
+    function drive_y_scan_range() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_DRIVEYRANGE", false);
       xhttp.send(); 
     }
 
