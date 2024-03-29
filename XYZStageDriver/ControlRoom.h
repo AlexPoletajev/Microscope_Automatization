@@ -35,7 +35,7 @@ const bool ZDIR  =         true;
 #define YSTEPSPERPICTURE  260
 #define XSCANRANGE        6540
 #define YSCANRANGE        1320
-#define ZSCANRANGE        4000
+#define ZSCANRANGE        0
 #define DELAY             2000
 #define ZDELAY            500
 #define XFRAMES           412

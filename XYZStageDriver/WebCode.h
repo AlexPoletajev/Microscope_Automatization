@@ -274,13 +274,14 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <input type="number" class="move_input" id = "z_steps" value = "0" width = "0%" "/>
     <br>
     <br>
-    <button type="button" name = "move" class = "btn" id = "btn0" onclick="ButtonPress0(x_steps.value, y_steps.value, z_steps.value)">move</button>
+    <button type="button" name = "move" class = "btn" id = "btn0" onclick="move_sample(x_steps.value, y_steps.value, z_steps.value)">move</button>
     </div>
     <br>
     <br>
     <br>
     <div class="bodytext">Measure scan range [steps]</div>
     <br>
+    <button type="button" class = "btn" id = "btn1" style="width: 50%; height = 50px" onclick="measure()">Measure start</button>
     <br>
     <table style="width:50%">
       <colgroup>
@@ -290,8 +291,6 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <col span="1" style="background-color:rgb(150,150,150); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(0,100,0); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(0,100,0); width: 15%; color:#000000 ;">
-        <col span="1" style="background-color:rgb(0,60,0); width: 15%; color:#000000 ;">
-        <col span="1" style="background-color:rgb(0,60,0); width: 15%; color:#000000 ;">
       </colgroup>
       <tr>
         <th colspan="1"><div class="heading"></div></th>
@@ -300,8 +299,6 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <th colspan="1"><div class="heading">diff</div></th>
         <th colspan="1"><div class="heading">frame size</div></th>
         <th colspan="1"><div class="heading">scan range</div></th>
-        <th colspan="1"><div class="heading">x focus range</div></th>
-        <th colspan="1"><div class="heading">y focus range</div></th>
       </tr>
       <tr>
         <td><div class="bodytext">x</div></td>
@@ -326,21 +323,42 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <td><div class="tabledata" id = "zd"></div></td>
         <td><div class="tabledata" id = "zfs"></div></td>
         <td><div class="tabledata" id = "zsr"></div></td>
-        <td><div class="tabledata" id = "xfr"></div></td>
-        <td><div class="tabledata" id = "yfr"></div></td>
       </tr>
       
       </table>
     <br>
-    <button type="button" class = "btn" id = "btn1" onclick="ButtonPress1()">Measure start</button>
-    <button type="button" class = "btn" id = "btn2" onclick="set_frame_size()">Set frame size</button>
-    <button type="button" class = "btn" id = "btn3" onclick="set_scan_range()">Set scan range</button>
-    <button type="button" class = "btn" id = "btn5" onclick="set_x_focus_range()">Set x focus range</button>
-    <button type="button" class = "btn" id = "btn6" onclick="set_y_focus_range()">Set y focus range</button>
+    <button type="button" class = "btn" onclick="set_frame_size()">Set frame size</button>
+    <button type="button" class = "btn" onclick="set_scan_range()">Set scan range</button>
+    <button type="button" class = "btn" onclick="drive_x_scan_range()">drive x range</button>
+    <button type="button" class = "btn" onclick="drive_y_scan_range()">drive y range</button>
     <br>
-    <button type="button" class = "btn" id = "btn7" onclick="drive_x_scan_range()">drive x range</button>
-    <button type="button" class = "btn" id = "btn8" onclick="drive_y_scan_range()">drive y range</button>
-    <button type="button" class = "btn" id = "btn4" onclick="scan()" style="background-color: #006400;" >Scan</button>
+    <table style="width:50%">
+      <colgroup>
+        <col span="1" style="background-color:rgb(230,230,230); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(200,200,200); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(180,180,180); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(180,180,180); width: 15%; color:#000000 ;">
+      </colgroup>
+      <tr>
+        <th colspan="1"><div class="heading"></div></th>
+        <th colspan="1"><div class="heading">x focus range</div></th>
+        <th colspan="1"><div class="heading">y focus range</div></th>
+        <th colspan="1"><div class="heading">stacking steps</div></th>
+      </tr>
+      <tr>
+        <td><div class="bodytext">z</div></td>
+        <td><div class="tabledata" id = "xfr"></div></td>
+        <td><div class="tabledata" id = "yfr"></div></td>
+        <td><div class="tabledata" id = "ss"></div></td>
+      </tr>
+      
+      </table>
+    <br>
+    <button type="button" class = "btn" onclick="set_x_focus_range()">Set x focus range</button>
+    <button type="button" class = "btn" onclick="set_y_focus_range()">Set y focus range</button>
+    <button type="button" class = "btn" onclick="add_stack_step()">Add stack stap</button>
+    <button type="button" class = "btn" onclick="reset_stack()">Reset stacking</button>
+    <button type="button" class = "btn" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
     <br>
     <br>
@@ -372,7 +390,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     // and send a processing string back to server
     // this processing string is use in the .on method
     
-    function ButtonPress0(value1, value2, value3) {
+    function move_sample(value1, value2, value3) {
       var xhttp = new XMLHttpRequest(); 
       var message;
 
@@ -397,7 +415,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       xhttp.send();
     }
 
-    function ButtonPress1() {
+    function measure() {
       var xhttp = new XMLHttpRequest(); 
 
       xhttp.onreadystatechange = function() {
@@ -450,6 +468,20 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       var xhttp = new XMLHttpRequest(); 
       
       xhttp.open("PUT", "B_DRIVEYRANGE", false);
+      xhttp.send(); 
+    }
+
+    function reset_stack() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_RESETSTACK", false);
+      xhttp.send(); 
+    }
+
+    function add_stack_step() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_ADDSTACK", false);
       xhttp.send(); 
     }
 
@@ -597,6 +629,11 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       xmldoc = xmlResponse.getElementsByTagName("YFR");
       message = xmldoc[0].firstChild.nodeValue;
       document.getElementById("yfr").innerHTML=message;
+
+      // SS
+      xmldoc = xmlResponse.getElementsByTagName("SS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("ss").innerHTML=message;
      }
   
     // general processing code for the web page to ask for an XML steam

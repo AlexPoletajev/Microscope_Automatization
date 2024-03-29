@@ -105,6 +105,8 @@ void setup()
   server.on("/B_SCANRANGE", on_button_set_scan_range);
   server.on("/B_DRIVEXRANGE", on_button_drive_x_scan_range);
   server.on("/B_DRIVEYRANGE", on_button_drive_y_scan_range);
+  server.on("/B_ADDSTACK", on_button_add_stacking_step);
+  server.on("/B_RESETSTACK", on_button_reset_stacking);
   server.on("/B_SCAN", on_button_scan);
 
   server.begin();
@@ -178,7 +180,7 @@ void on_button_drive_x_scan_range() {
   dir = x_scan_range > 0 ? XDIR : !XDIR;
   mot_driver->make_step_with_motor(xMotor, abs(x_scan_range), dir, DELAY);
   dir = x_focus_range > 0 ? ZDIR : !ZDIR;
-  mot_driver->make_step_with_motor(zMotor, abs(x_scan_range), dir, DELAY);
+  mot_driver->make_step_with_motor(zMotor, abs(x_focus_range), dir, DELAY);
 
   std::cout << "drive x scan range" << std::endl;
 }
@@ -189,8 +191,19 @@ void on_button_drive_y_scan_range() {
   mot_driver->make_step_with_motor(yMotor, abs(y_scan_range), dir, DELAY);
     dir = y_focus_range > 0 ? ZDIR : !ZDIR;
   mot_driver->make_step_with_motor(zMotor, abs(y_focus_range), dir, DELAY);
-  
+
   std::cout << "drive y scan range" << std::endl;
+}
+
+void on_button_add_stacking_step() {
+  
+  scanner->add_stack_step(z_mot - z_start);
+  std::cout << "stacking step " << z_mot - z_start << " added" << std::endl;
+}
+
+void on_button_reset_stacking() {
+  scanner->reset_stack();
+  std::cout << "reset stacking" << std::endl;
 }
 
 void update_motor_position() {
@@ -311,6 +324,9 @@ void SendXML() {
   strcat(XML, buf);
 
   sprintf(buf, "<YFR>%d</YFR>\n", y_focus_range);
+  strcat(XML, buf);
+
+  sprintf(buf, "<SS>%d</SS>\n", scanner->stack_size());
   strcat(XML, buf);
 
   strcat(XML, "</Data>\n");

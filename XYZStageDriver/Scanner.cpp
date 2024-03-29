@@ -7,7 +7,6 @@ void Scanner::shoot()
   // digitalWrite (transistor_pin, HIGH);
   // delay(300);
   // digitalWrite (transistor_pin, LOW);
-
   std::cout << "shoot();" << std::endl;
 }
 
@@ -40,8 +39,8 @@ void Scanner::scan()
   bool x_direction = XDIR;
   bool y_direction = YDIR;
 
-  y_steps_per_frame = x_steps_per_frame = 200;
-  x_num_frames = y_num_frames = 3;
+  // y_steps_per_frame = x_steps_per_frame = 200;
+  // x_num_frames = y_num_frames = 1;
 
   int z_x_steps_per_frame = focus_range.at(0) / x_num_frames;
   int z_y_steps_per_frame = focus_range.at(1) / y_num_frames;
@@ -64,11 +63,13 @@ void Scanner::scan()
   for (int i = 0; i <= x_num_frames; ++i)
   {
     shoot();
+    shoot_stack();
     for(int j = 0; j < y_num_frames; ++j)
     {
       motor_driver->make_step_with_motor(yMotor, y_steps_per_frame, y_direction, DELAY);
       motor_driver->make_step_with_motor(zMotor, z_y_steps_per_frame, z_y_direction, ZDELAY);
       shoot();
+      shoot_stack();
     }
     motor_driver->make_step_with_motor(yMotor, y_correction, y_direction, DELAY);
     y_direction = !y_direction;
@@ -85,3 +86,21 @@ void Scanner::scan()
   motor_driver->go_to_position(start_coordinates);
   std::cout << "scanning done" << std::endl;
 }
+
+void Scanner::shoot_stack()  
+{
+   if ( !stacking_steps.empty() )
+   {
+      int total_steps{0};
+      for (auto &sp: stacking_steps)
+      {
+        std::cout << " sp = " << sp << std::endl;
+        motor_driver->make_step_with_motor(zMotor, sp, ZDIR, ZDELAY);
+        total_steps += sp;
+        shoot();
+        std::cout << "stack step shoot();" << std::endl;
+      }
+      motor_driver->make_step_with_motor(zMotor, total_steps, !ZDIR, ZDELAY);
+    }
+}
+
