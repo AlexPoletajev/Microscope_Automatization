@@ -5,7 +5,7 @@
 #include <WebServer.h>  // standard library
 #include "WebCode.h"   // .h file that stores your html page code
 
-#define USE_INTRANET
+//#define USE_INTRANET
 
 #define LOCAL_SSID "Heimsucht"
 #define LOCAL_PASS "DasLebenIstSchoen"
@@ -119,10 +119,13 @@ void loop()
 void on_button_scan() {
   scanner->set_focus_range( {x_focus_range, y_focus_range } );
   scanner->scan();
+  update_motor_position();
 }
 
 void on_button_set_frame_size() {
-  frame_size = measure_diff;
+  for (int i=0; i < measure_diff.size(); ++i)
+    frame_size.at(i) = abs(measure_diff.at(i));
+
   scanner->set_frame_size( frame_size );
 
   std::cout << "set frame size" << std::endl;

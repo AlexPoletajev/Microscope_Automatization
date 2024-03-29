@@ -21,13 +21,13 @@ void Scanner::scan()
   int x_steps_per_frame = 2 * frame_size.at(0) / 3;
   if (x_steps_per_frame < 1)
     x_steps_per_frame = 1;
-  int x_num_frames = scan_range.at(0) / x_steps_per_frame;
+  int x_num_frames = abs(scan_range.at(0) / x_steps_per_frame);
   x_steps_per_frame = scan_range.at(0) / x_num_frames;
 
   int y_steps_per_frame = 2 * frame_size.at(1) / 3;
   if (y_steps_per_frame < 1)
     y_steps_per_frame = 1;
-  int y_num_frames = scan_range.at(1) / y_steps_per_frame;
+  int y_num_frames = abs(scan_range.at(1) / y_steps_per_frame);
   y_steps_per_frame = scan_range.at(1) / y_num_frames;
 
   int x_correction{0}, y_correction{0};
@@ -36,8 +36,8 @@ void Scanner::scan()
   if ( (scan_range.at(1) - y_steps_per_frame * y_num_frames) > (frame_size.at(1) / 6) )
     y_correction = scan_range.at(0) - y_steps_per_frame * y_num_frames;
 
-  bool x_direction = XDIR;
-  bool y_direction = YDIR;
+  bool x_direction = x_steps_per_frame > 0 ? XDIR : !XDIR;
+  bool y_direction = y_steps_per_frame > 0 ? YDIR : !YDIR;
 
   // y_steps_per_frame = x_steps_per_frame = 200;
   // x_num_frames = y_num_frames = 1;
