@@ -118,13 +118,12 @@ void loop()
 
 void on_button_scan() {
   scanner->set_focus_range( {x_focus_range, y_focus_range } );
-  scanner->set_scan_range( scan_range );
-  scanner->set_frame_size( frame_size );
   scanner->scan();
 }
 
 void on_button_set_frame_size() {
   frame_size = measure_diff;
+  scanner->set_frame_size( frame_size );
 
   std::cout << "set frame size" << std::endl;
 }
@@ -143,6 +142,7 @@ void on_button_set_y_focus_range() {
 
 void on_button_set_scan_range() {
   scan_range = measure_diff;
+  scanner->set_scan_range( scan_range );
 
   std::cout << "set scan range" << std::endl;
 }
@@ -168,13 +168,14 @@ void on_button_drive_y_scan_range() {
 }
 
 void on_button_add_stacking_step() {
-  
   scanner->add_stack_step(motor_position.at(2) - measure_start.at(2));
+
   std::cout << "stacking step " << motor_position.at(2) - measure_start.at(2) << " added" << std::endl;
 }
 
 void on_button_reset_stacking() {
   scanner->reset_stack();
+  
   std::cout << "reset stacking" << std::endl;
 }
 
