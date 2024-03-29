@@ -356,8 +356,9 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
     <button type="button" class = "btn" onclick="set_x_focus_range()">Set x focus range</button>
     <button type="button" class = "btn" onclick="set_y_focus_range()">Set y focus range</button>
-    <button type="button" class = "btn" onclick="add_stack_step()">Add stack stap</button>
+    <button type="button" class = "btn" onclick="add_stack_step()">Add stack step</button>
     <button type="button" class = "btn" onclick="reset_stack()">Reset stacking</button>
+    <button type="button" class = "btn" onclick="set_stack_start()">Set stack start</button>
     <button type="button" class = "btn" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
     <br>
@@ -477,6 +478,14 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       xhttp.open("PUT", "B_RESETSTACK", false);
       xhttp.send(); 
     }
+
+    function set_stack_start() {
+      var xhttp = new XMLHttpRequest(); 
+      
+      xhttp.open("PUT", "B_STACKSTART", false);
+      xhttp.send(); 
+    }
+    
 
     function add_stack_step() {
       var xhttp = new XMLHttpRequest(); 

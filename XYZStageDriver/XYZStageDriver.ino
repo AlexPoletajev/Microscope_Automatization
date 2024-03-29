@@ -15,6 +15,7 @@
 
 // variables to store measure data and sensor states
 int x_focus_range{0}, y_focus_range{0};
+int stack_start_position{0};
 std::vector<int> motor_position{ 0, 0, 0 };
 std::vector<int> coordinate_base{ 0, 0, 0 };
 std::vector<int> measure_start{ 0, 0, 0 };
@@ -92,8 +93,9 @@ void setup()
   server.on("/B_SCANRANGE", on_button_set_scan_range);
   server.on("/B_DRIVEXRANGE", on_button_drive_x_scan_range);
   server.on("/B_DRIVEYRANGE", on_button_drive_y_scan_range);
-  server.on("/B_ADDSTACK", on_button_add_stacking_step);
-  server.on("/B_RESETSTACK", on_button_reset_stacking);
+  server.on("/B_ADDSTACK", on_button_add_stack_step);
+  server.on("/B_RESETSTACK", on_button_reset_stack);
+  server.on("/B_STACKSTART", on_button_set_stack_start);
   server.on("/B_SCAN", on_button_scan);
 
   server.begin();
@@ -170,16 +172,22 @@ void on_button_drive_y_scan_range() {
   std::cout << "drive y scan range" << std::endl;
 }
 
-void on_button_add_stacking_step() {
-  scanner->add_stack_step(motor_position.at(2) - measure_start.at(2));
+void on_button_add_stack_step() {
+  scanner->add_stack_step(motor_position.at(2) - stack_start_position);
 
-  std::cout << "stacking step " << motor_position.at(2) - measure_start.at(2) << " added" << std::endl;
+  std::cout << "stacking step " << motor_position.at(2) - stack_start_position << " added" << std::endl;
 }
 
-void on_button_reset_stacking() {
+void on_button_reset_stack() {
   scanner->reset_stack();
   
   std::cout << "reset stacking" << std::endl;
+}
+
+void on_button_set_stack_start() {
+  stack_start_position = motor_position.at(2);
+  
+  std::cout << "set stack start at " << stack_start_position << std::endl;
 }
 
 void update_motor_position() {
