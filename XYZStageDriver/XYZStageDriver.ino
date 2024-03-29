@@ -13,24 +13,15 @@
 #define AP_SSID "MicroscopeStageController"
 #define AP_PASS "BH2"
 
-// start your defines for pins for sensors, outputs etc.
-#define PIN_OUTPUT 26 // connected to nothing but an example of a digital write from the web page
-#define PIN_FAN 27    // pin 27 and is a PWM signal to control a fan speed
-#define PIN_LED 2     //On board LED
-#define PIN_A0 34     // some analog input sensor
-#define PIN_A1 35     // some analog input sensor
-
 // variables to store measure data and sensor states
-int x_mot = 0, z_mot = 0, y_mot = 0;
-int x_start = 0, x_end = 0, x_diff = 0, x_scan_range = 0, x_frame_size = 0;
-int y_start = 0, y_end = 0, y_diff = 0, y_scan_range = 0, y_frame_size = 0;
-int z_start = 0, z_end = 0, z_diff = 0, z_scan_range = 0, z_frame_size = 0;
-int x_focus_range = 0, y_focus_range = 0;
-
-int FanSpeed = 0;
-bool LED0 = false, SomeOutput = false;
-uint32_t SensorUpdate = 0;
-int FanRPM = 0;
+int x_focus_range{0}, y_focus_range{0};
+std::vector<int> motor_position{ 0, 0, 0 };
+std::vector<int> coordinate_base{ 0, 0, 0 };
+std::vector<int> measure_start{ 0, 0, 0 };
+std::vector<int> measure_end{ 0, 0, 0 };
+std::vector<int> measure_diff{ 0, 0, 0 };
+std::vector<int> scan_range{ XSCANRANGE , YSCANRANGE, ZSCANRANGE};
+std::vector<int> frame_size{ XSTEPSPERPICTURE, YSTEPSPERPICTURE, 0};
 
 // the XML array size needs to be bigger that your maximum expected size. 2048 is way too big for this example
 char XML[2048];
@@ -49,16 +40,12 @@ IPAddress ip;
 
 WebServer server(80);
 
-const int xFrames = 31;//XSCANRANGE / XSTEPSPERPICTURE + 1;
-const int yFrames = 19;//YSCANRANGE / YSTEPSPERPICTURE;
-
 // sate variable to track measuring procedure
 bool measure_on = false;
 
 using namespace std;
 std::shared_ptr<MotorDriver> mot_driver;
 std::shared_ptr<Scanner> scanner;
-
 
 void setup()
 {
@@ -120,17 +107,6 @@ void setup()
   pinMode(Z_DIR_PIN, OUTPUT); 
   pinMode(Z_STEP_PIN,OUTPUT);
 
-  x_frame_size = XSTEPSPERPICTURE;
-  y_frame_size = YSTEPSPERPICTURE;
-  z_frame_size = 0;
-
-  x_focus_range = ZSCANRANGE;
-  y_focus_range = ZSCANRANGE;
-
-  x_scan_range = XSCANRANGE;
-  y_scan_range = YSCANRANGE;
-  z_scan_range = ZSCANRANGE;
-
   mot_driver = std::make_shared<MotorDriver>();
   scanner = std::make_shared<Scanner>(mot_driver);
 }
@@ -142,63 +118,59 @@ void loop()
 
 void on_button_scan() {
   scanner->set_focus_range( {x_focus_range, y_focus_range } );
-  scanner->set_scan_range( {x_scan_range, y_scan_range, z_scan_range} );
-  scanner->set_frame_size( {x_frame_size, y_frame_size, z_frame_size} );
+  scanner->set_scan_range( scan_range );
+  scanner->set_frame_size( frame_size );
   scanner->scan();
 }
 
 void on_button_set_frame_size() {
-  x_frame_size = x_diff;
-  y_frame_size = y_diff;
-  z_frame_size = z_diff;
+  frame_size = measure_diff;
 
   std::cout << "set frame size" << std::endl;
 }
 
 void on_button_set_x_focus_range() {
-  x_focus_range = z_diff;
+  x_focus_range = measure_diff.at(2);
 
   std::cout << "set z x focus range" << std::endl;
 }
 
 void on_button_set_y_focus_range() {
-  y_focus_range = z_diff;
+  y_focus_range = measure_diff.at(2);
 
   std::cout << "set z y focus range" << std::endl;
 }
 
 void on_button_set_scan_range() {
-  x_scan_range = x_diff;
-  y_scan_range = y_diff;
-  z_scan_range = z_diff;
+  scan_range = measure_diff;
 
   std::cout << "set scan range" << std::endl;
 }
 
 void on_button_drive_x_scan_range() {
   bool dir = false;
-  dir = x_scan_range > 0 ? XDIR : !XDIR;
-  mot_driver->make_step_with_motor(xMotor, abs(x_scan_range), dir, DELAY);
-  dir = x_focus_range > 0 ? ZDIR : !ZDIR;
-  mot_driver->make_step_with_motor(zMotor, abs(x_focus_range), dir, DELAY);
+  dir = scan_range.at(0) > 0 ? XDIR : !XDIR;
+  mot_driver->make_step_with_motor(xMotor, abs(scan_range.at(0)), dir, DELAY);
+  // dir = x_focus_range > 0 ? ZDIR : !ZDIR;
+  // mot_driver->make_step_with_motor(zMotor, abs(x_focus_range), dir, DELAY);
 
   std::cout << "drive x scan range" << std::endl;
 }
 
 void on_button_drive_y_scan_range() {
   bool dir = false;
-  dir = y_scan_range > 0 ? YDIR : !YDIR;
-  mot_driver->make_step_with_motor(yMotor, abs(y_scan_range), dir, DELAY);
-    dir = y_focus_range > 0 ? ZDIR : !ZDIR;
-  mot_driver->make_step_with_motor(zMotor, abs(y_focus_range), dir, DELAY);
+  dir = scan_range.at(1) > 0 ? YDIR : !YDIR;
+  mot_driver->make_step_with_motor(yMotor, abs(scan_range.at(1)), dir, DELAY);
+  //   dir = y_focus_range > 0 ? ZDIR : !ZDIR;
+  // mot_driver->make_step_with_motor(zMotor, abs(y_focus_range), dir, DELAY);
 
   std::cout << "drive y scan range" << std::endl;
 }
 
 void on_button_add_stacking_step() {
   
-  scanner->add_stack_step(z_mot - z_start);
-  std::cout << "stacking step " << z_mot - z_start << " added" << std::endl;
+  scanner->add_stack_step(motor_position.at(2) - measure_start.at(2));
+  std::cout << "stacking step " << motor_position.at(2) - measure_start.at(2) << " added" << std::endl;
 }
 
 void on_button_reset_stacking() {
@@ -207,10 +179,7 @@ void on_button_reset_stacking() {
 }
 
 void update_motor_position() {
-  std::vector<int> pos = mot_driver->get_position();
-  x_mot = pos.at(0);
-  y_mot = pos.at(1);
-  z_mot = pos.at(2);
+  motor_position = mot_driver->get_position();
 }
 
 void on_button_move() {
@@ -234,22 +203,22 @@ void on_button_move() {
 void on_button_measure() {
   if (measure_on)
   {
-    x_end = x_mot;
-    x_diff = x_end - x_start;
-    y_end = y_mot;
-    y_diff = y_end - y_start;
-    z_end = z_mot;
-    z_diff = z_end - z_start;
+    measure_end.at(0) = motor_position.at(0);
+    measure_diff.at(0) = measure_end.at(0) - measure_start.at(0);
+    measure_end.at(1) = motor_position.at(1);
+    measure_diff.at(1) = measure_end.at(1) - measure_start.at(1);
+    measure_end.at(2) = motor_position.at(2);
+    measure_diff.at(2) = measure_end.at(2) - measure_start.at(2);
     server.send(200, "text/plain", "Measure start");
   }
   else
   {
-    x_start = x_mot;
-    x_diff = 0;
-    y_start = y_mot;
-    y_diff = 0;
-    z_start = z_mot;
-    z_diff = 0;
+    measure_start.at(0) = motor_position.at(0);
+    measure_diff.at(0) = 0;
+    measure_start.at(1) = motor_position.at(1);
+    measure_diff.at(1) = 0;
+    measure_start.at(2) = motor_position.at(2);
+    measure_diff.at(2) = 0;
     server.send(200, "text/plain", "Measure end");
   }
   measure_on = !measure_on;
@@ -266,58 +235,58 @@ void SendWebsite() {
 void SendXML() {
   strcpy(XML, "<?xml version = '1.0'?>\n<Data>\n");
 
-  sprintf(buf, "<X0>%d</X0>\n", x_mot);
+  sprintf(buf, "<X0>%d</X0>\n", motor_position.at(0));
   strcat(XML, buf);
 
-  sprintf(buf, "<Y0>%d</Y0>\n", y_mot);
+  sprintf(buf, "<Y0>%d</Y0>\n", motor_position.at(1));
   strcat(XML, buf);
 
-  sprintf(buf, "<Z0>%d</Z0>\n", z_mot);
+  sprintf(buf, "<Z0>%d</Z0>\n", motor_position.at(2));
   strcat(XML, buf);
 
-  sprintf(buf, "<XS>%d</XS>\n", x_start);
+  sprintf(buf, "<XS>%d</XS>\n", measure_start.at(0));
   strcat(XML, buf);
 
-  sprintf(buf, "<XE>%d</XE>\n", x_end);
+  sprintf(buf, "<XE>%d</XE>\n", measure_end.at(0));
   strcat(XML, buf);
 
-  sprintf(buf, "<XD>%d</XD>\n", x_diff);
+  sprintf(buf, "<XD>%d</XD>\n", measure_diff.at(0));
   strcat(XML, buf);
 
-  sprintf(buf, "<XFS>%d</XFS>\n", x_frame_size);
+  sprintf(buf, "<XFS>%d</XFS>\n", frame_size.at(0));
   strcat(XML, buf);
 
-  sprintf(buf, "<XSR>%d</XSR>\n", x_scan_range);
+  sprintf(buf, "<XSR>%d</XSR>\n", scan_range.at(0));
   strcat(XML, buf);
 
-  sprintf(buf, "<YS>%d</YS>\n", y_start);
+  sprintf(buf, "<YS>%d</YS>\n", measure_start.at(1));
   strcat(XML, buf);
 
-  sprintf(buf, "<YE>%d</YE>\n", y_end);
+  sprintf(buf, "<YE>%d</YE>\n", measure_end.at(1));
   strcat(XML, buf);
 
-  sprintf(buf, "<YD>%d</YD>\n", y_diff);
+  sprintf(buf, "<YD>%d</YD>\n", measure_diff.at(1));
   strcat(XML, buf);
 
-  sprintf(buf, "<YFS>%d</YFS>\n", y_frame_size);
+  sprintf(buf, "<YFS>%d</YFS>\n", frame_size.at(1));
   strcat(XML, buf);
 
-  sprintf(buf, "<YSR>%d</YSR>\n", y_scan_range);
+  sprintf(buf, "<YSR>%d</YSR>\n", scan_range.at(1));
   strcat(XML, buf);
 
-  sprintf(buf, "<ZS>%d</ZS>\n", z_start);
+  sprintf(buf, "<ZS>%d</ZS>\n", measure_start.at(2));
   strcat(XML, buf);
 
-  sprintf(buf, "<ZE>%d</ZE>\n", z_end);
+  sprintf(buf, "<ZE>%d</ZE>\n", measure_end.at(2));
   strcat(XML, buf);
 
-  sprintf(buf, "<ZD>%d</ZD>\n", z_diff);
+  sprintf(buf, "<ZD>%d</ZD>\n", measure_diff.at(2));
   strcat(XML, buf);
 
-  sprintf(buf, "<ZFS>%d</ZFS>\n", z_frame_size);
+  sprintf(buf, "<ZFS>%d</ZFS>\n", frame_size.at(2));
   strcat(XML, buf);
 
-  sprintf(buf, "<ZSR>%d</ZSR>\n", z_scan_range);
+  sprintf(buf, "<ZSR>%d</ZSR>\n", scan_range.at(2));
   strcat(XML, buf);
 
   sprintf(buf, "<XFR>%d</XFR>\n", x_focus_range);
