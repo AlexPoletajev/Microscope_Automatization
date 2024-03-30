@@ -19,7 +19,7 @@ class Motor {
   Motor() = default;
 
   void step();
-  
+
 public:
   ~Motor() = default;
 
@@ -34,7 +34,9 @@ public:
 
   void walk(const int &num_steps, const bool &direction, const int &delay_time);
   void go_to_position(const int pos);
-  const int get_position(){ return position; }
+  const int get_position() {
+    return position;
+  }
 };
 
 

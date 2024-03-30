@@ -3,9 +3,9 @@
 
 class Button {
   const byte buttonPin;
-  
-  public:
-  bool is_pressed(){
+
+public:
+  bool is_pressed() {
     return digitalRead(buttonPin) != LOW;
   };
 }

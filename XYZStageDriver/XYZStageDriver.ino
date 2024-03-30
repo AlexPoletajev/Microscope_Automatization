@@ -3,7 +3,7 @@
 #include "JoyStick.h"
 #include <WiFi.h>       // standard library
 #include <WebServer.h>  // standard library
-#include "WebCode.h"   // .h file that stores your html page code
+#include "WebCode.h"    // .h file that stores your html page code
 
 //#define USE_INTRANET
 
@@ -14,15 +14,15 @@
 #define AP_PASS "BH2"
 
 // variables to store measure data and sensor states
-int x_focus_range{0}, y_focus_range{0};
-int stack_start_position{0};
+int x_focus_range{ 0 }, y_focus_range{ 0 };
+int stack_start_position{ 0 };
 std::vector<int> motor_position{ 0, 0, 0 };
 std::vector<int> coordinate_base{ 0, 0, 0 };
 std::vector<int> measure_start{ 0, 0, 0 };
 std::vector<int> measure_end{ 0, 0, 0 };
 std::vector<int> measure_diff{ 0, 0, 0 };
-std::vector<int> scan_range{ XSCANRANGE , YSCANRANGE, ZSCANRANGE};
-std::vector<int> frame_size{ XSTEPSPERPICTURE, YSTEPSPERPICTURE, 0};
+std::vector<int> scan_range{ XSCANRANGE, YSCANRANGE, ZSCANRANGE };
+std::vector<int> frame_size{ XSTEPSPERPICTURE, YSTEPSPERPICTURE, 0 };
 
 // the XML array size needs to be bigger that your maximum expected size. 2048 is way too big for this example
 char XML[2048];
@@ -48,8 +48,7 @@ using namespace std;
 std::shared_ptr<MotorDriver> mot_driver;
 std::shared_ptr<Scanner> scanner;
 
-void setup()
-{
+void setup() {
   Serial.begin(9600);
   delay(100);
   disableCore0WDT();
@@ -67,7 +66,8 @@ void setup()
     delay(500);
     Serial.print(".");
   }
-  Serial.print("IP address: "); Serial.println(WiFi.localIP());
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
   Actual_IP = WiFi.localIP();
 #endif
 
@@ -77,7 +77,8 @@ void setup()
   WiFi.softAPConfig(PageIP, gateway, subnet);
   delay(100);
   Actual_IP = WiFi.softAPIP();
-  Serial.print("IP address: "); Serial.println(Actual_IP);
+  Serial.print("IP address: ");
+  Serial.println(Actual_IP);
 #endif
 
   printWifiStatus();
@@ -102,33 +103,32 @@ void setup()
 
   // - Init I/O Connections
   pinMode(TRANSISTOR, OUTPUT);
-  pinMode(X_DIR_PIN, OUTPUT); 
-  pinMode(X_STEP_PIN,OUTPUT);  
-  pinMode(Y_DIR_PIN, OUTPUT); 
-  pinMode(Y_STEP_PIN,OUTPUT);
-  pinMode(Z_DIR_PIN, OUTPUT); 
-  pinMode(Z_STEP_PIN,OUTPUT);
+  pinMode(X_DIR_PIN, OUTPUT);
+  pinMode(X_STEP_PIN, OUTPUT);
+  pinMode(Y_DIR_PIN, OUTPUT);
+  pinMode(Y_STEP_PIN, OUTPUT);
+  pinMode(Z_DIR_PIN, OUTPUT);
+  pinMode(Z_STEP_PIN, OUTPUT);
 
   mot_driver = std::make_shared<MotorDriver>();
   scanner = std::make_shared<Scanner>(mot_driver);
 }
 
-void loop()
-{
-   server.handleClient();  
+void loop() {
+  server.handleClient();
 }
 
 void on_button_scan() {
-  scanner->set_focus_range( {x_focus_range, y_focus_range } );
+  scanner->set_focus_range({ x_focus_range, y_focus_range });
   scanner->scan();
   update_motor_position();
 }
 
 void on_button_set_frame_size() {
-  for (int i=0; i < measure_diff.size(); ++i)
+  for (int i = 0; i < measure_diff.size(); ++i)
     frame_size.at(i) = abs(measure_diff.at(i));
 
-  scanner->set_frame_size( frame_size );
+  scanner->set_frame_size(frame_size);
 
   std::cout << "set frame size" << std::endl;
 }
@@ -147,7 +147,7 @@ void on_button_set_y_focus_range() {
 
 void on_button_set_scan_range() {
   scan_range = measure_diff;
-  scanner->set_scan_range( scan_range );
+  scanner->set_scan_range(scan_range);
 
   std::cout << "set scan range" << std::endl;
 }
@@ -180,13 +180,13 @@ void on_button_add_stack_step() {
 
 void on_button_reset_stack() {
   scanner->reset_stack();
-  
+
   std::cout << "reset stacking" << std::endl;
 }
 
 void on_button_set_stack_start() {
   stack_start_position = motor_position.at(2);
-  
+
   std::cout << "set stack start at " << stack_start_position << std::endl;
 }
 
@@ -206,26 +206,21 @@ void on_button_move() {
   mot_driver->make_step_with_motor(yMotor, abs(y), dir, DELAY);
   dir = z > 0 ? ZDIR : !ZDIR;
   mot_driver->make_step_with_motor(zMotor, abs(z), dir, ZDELAY);
-  
+
   update_motor_position();
   server.send(200, "text/plain", "");
 }
 
 // same notion for processing button_1
 void on_button_measure() {
-  if (measure_on)
-  {
-    for (int i = 0; i < measure_end.size(); ++i)
-    {
+  if (measure_on) {
+    for (int i = 0; i < measure_end.size(); ++i) {
       measure_end.at(i) = motor_position.at(i);
       measure_diff.at(i) = measure_end.at(i) - measure_start.at(i);
     }
     server.send(200, "text/plain", "Measure start");
-  }
-  else
-  {
-    for (int i = 0; i < measure_end.size(); ++i)
-    {
+  } else {
+    for (int i = 0; i < measure_end.size(); ++i) {
       measure_start.at(i) = motor_position.at(i);
       measure_diff.at(i) = 0;
     }
