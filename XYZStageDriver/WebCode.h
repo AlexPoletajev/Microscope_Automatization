@@ -265,16 +265,15 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
     <br>
     <div class="bodytext">x:  </div>
-    <input type="number" class="move_input" id = "x_steps" value = "10" width = "0%" "/>
-    <br>
+    <input type="number" class="move_input" id = "x_steps" value = "100" width = "0%" "/>
     <div class="bodytext">y:  </div>
-    <input type="number" class="move_input" id = "y_steps" value = "10" width = "0%" "/>
-    <br>
+    <input type="number" class="move_input" id = "y_steps" value = "100" width = "0%" "/>
     <div class="bodytext">z:  </div>
-    <input type="number" class="move_input" id = "z_steps" value = "0" width = "0%" "/>
+    <input type="number" class="move_input" id = "z_steps" value = "10" width = "0%" "/>
     <br>
-    <br>
-    <button type="button" name = "move" class = "btn" id = "btn0" onclick="move_sample(x_steps.value, y_steps.value, z_steps.value)">move</button>
+    <button type="button" class = "btn" id = "btn0" onclick="move_sample(x_steps.value, y_steps.value, z_steps.value)">move</button>
+    <button type="button" class = "btn" onclick="go_to_base()">go to base</button>
+    <button type="button" class = "btn" onclick="reset_base()">reset base</button>
     </div>
     <br>
     <br>
@@ -414,6 +413,20 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       var variables = "x_steps=" + value1 + "&" + "y_steps=" + value2 + "&" + "z_steps=" + value3;
       xhttp.open("PUT", "B_MOVE?"+variables , true);
       xhttp.send();
+    }
+
+    function reset_base() {
+      var xhttp = new XMLHttpRequest(); 
+
+      xhttp.open("PUT", "B_RESETBASE", false);
+      xhttp.send(); 
+    }
+
+    function go_to_base() {
+      var xhttp = new XMLHttpRequest(); 
+
+      xhttp.open("PUT", "B_GOBASE", false);
+      xhttp.send(); 
     }
 
     function measure() {

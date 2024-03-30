@@ -97,6 +97,8 @@ void setup() {
   server.on("/B_ADDSTACK", on_button_add_stack_step);
   server.on("/B_RESETSTACK", on_button_reset_stack);
   server.on("/B_STACKSTART", on_button_set_stack_start);
+  server.on("/B_RESETBASE", on_button_reset_base);
+  server.on("/B_GOBASE", on_button_go_to_base);
   server.on("/B_SCAN", on_button_scan);
 
   server.begin();
@@ -116,6 +118,7 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  update_motor_position();
 }
 
 void on_button_scan() {
@@ -192,6 +195,9 @@ void on_button_set_stack_start() {
 
 void update_motor_position() {
   motor_position = mot_driver->get_position();
+  
+  for (int i = 0; i < motor_position.size(); ++i)
+    motor_position.at(i) -= coordinate_base.at(i);
 }
 
 void on_button_move() {
@@ -209,6 +215,23 @@ void on_button_move() {
 
   update_motor_position();
   server.send(200, "text/plain", "");
+}
+
+void on_button_reset_base() {
+  for (int i = 0; i < motor_position.size(); ++i)
+    coordinate_base.at(i) += motor_position.at(i);
+ // coordinate_base = motor_position;
+  update_motor_position();
+  
+  std::cout << "new base at" 
+  << " x = " << coordinate_base.at(0) 
+  << ", y = " << coordinate_base.at(1) 
+  << ", z = " << coordinate_base.at(2) 
+  << std::endl;
+}
+
+void on_button_go_to_base() {
+  mot_driver->go_to_position(coordinate_base);
 }
 
 // same notion for processing button_1
