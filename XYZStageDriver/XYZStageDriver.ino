@@ -215,22 +215,20 @@ void on_button_move() {
 void on_button_measure() {
   if (measure_on)
   {
-    measure_end.at(0) = motor_position.at(0);
-    measure_diff.at(0) = measure_end.at(0) - measure_start.at(0);
-    measure_end.at(1) = motor_position.at(1);
-    measure_diff.at(1) = measure_end.at(1) - measure_start.at(1);
-    measure_end.at(2) = motor_position.at(2);
-    measure_diff.at(2) = measure_end.at(2) - measure_start.at(2);
+    for (int i = 0; i < measure_end.size(); ++i)
+    {
+      measure_end.at(i) = motor_position.at(i);
+      measure_diff.at(i) = measure_end.at(i) - measure_start.at(i);
+    }
     server.send(200, "text/plain", "Measure start");
   }
   else
   {
-    measure_start.at(0) = motor_position.at(0);
-    measure_diff.at(0) = 0;
-    measure_start.at(1) = motor_position.at(1);
-    measure_diff.at(1) = 0;
-    measure_start.at(2) = motor_position.at(2);
-    measure_diff.at(2) = 0;
+    for (int i = 0; i < measure_end.size(); ++i)
+    {
+      measure_start.at(i) = motor_position.at(i);
+      measure_diff.at(i) = 0;
+    }
     server.send(200, "text/plain", "Measure end");
   }
   measure_on = !measure_on;

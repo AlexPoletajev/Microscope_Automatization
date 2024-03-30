@@ -31,13 +31,17 @@ void MotorDriver::go_to_position(std::vector<int> position)
 
   for (auto [type, ptr] : active_motors) {
     steps = position.at(i) - ptr->get_position();
-    dir = steps > 0 ? true : false; //direction.at(i) : !direction.at(i);
 
-    std::cout << enum2string(type) << " is in position:   " << ptr->get_position() << std::endl;
-    std::cout << enum2string(type) << " goes to position: " << position.at(i) << std::endl;
-    std::cout << enum2string(type) << " has to go       : " << steps << std::endl;
+    if (steps != 0)
+    {
+      dir = steps > 0 ? true : false; //direction.at(i) : !direction.at(i);
 
-    ptr->walk( abs(steps), dir, DELAY );
+      std::cout << enum2string(type) << " is in position:   " << ptr->get_position() << std::endl;
+      std::cout << enum2string(type) << " goes to position: " << position.at(i) << std::endl;
+      //std::cout << enum2string(type) << " has to go       : " << steps << std::endl;
+
+      ptr->walk( abs(steps), dir, DELAY );
+    }
     ++i;
   }
 }

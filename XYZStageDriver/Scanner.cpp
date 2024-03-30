@@ -91,16 +91,17 @@ void Scanner::shoot_stack()
 {
    if ( !stacking_steps.empty() )
    {
-      int total_steps{0};
+      auto start_pos = motor_driver->get_position();
+      // int total_steps{0};
       for (auto &sp: stacking_steps)
       {
         std::cout << " sp = " << sp << std::endl;
-        motor_driver->make_step_with_motor(zMotor, sp, ZDIR, ZDELAY);
-        total_steps += sp;
+        motor_driver->go_to_position({start_pos.at(0), start_pos.at(1), sp + start_pos.at(2)});
+        // total_steps += sp;
         shoot();
-        std::cout << "stack step shoot();" << std::endl;
+        std::cout << "stack step shoot(); at " << sp << std::endl;
       }
-      motor_driver->make_step_with_motor(zMotor, total_steps, !ZDIR, ZDELAY);
+      motor_driver->go_to_position(start_pos);
     }
 }
 

@@ -28,16 +28,18 @@ void Motor::step() {
 
 void Motor::walk(const int &num_steps, const bool &direction, const int &delay_time) {
 
+  if (num_steps == 0)
+    return;
+
   digitalWrite(dir_pin, direction);
   this->delay_time = delay_time;
 
   int position_modifier = (direction == true) ? 1 : -1;
 
-  for (int i = 0; i < abs(num_steps); ++i) {
+  for (int i = 0; i < abs(num_steps); ++i)
     step();
-    position += position_modifier; // - opti ?
-  }
-
+    
+  position += position_modifier * num_steps;
   std::cout<< enum2string(this->type) << " walked "
   << position_modifier * abs(num_steps) << " steps" << std::endl;
 }
