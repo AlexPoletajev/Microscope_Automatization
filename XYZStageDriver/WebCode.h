@@ -103,6 +103,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       height: 55px;
       outline: none;
       height: 25px;
+      font-size: 24px;
     }
     .bodytext {
       font-family: "Verdana", "Arial", sans-serif;
@@ -229,10 +230,10 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     </header>
   
     <main class="container" style="margin-top:70px">
-      <div class="category">Parameters</div>
+      <!-- <div class="category">Parameters</div> -->
       <br>
       <div style="border-radius: 10px !important;">
-      <table style="width:50%">
+      <table style="width:40%">
       <colgroup>
         <col span="1" style="background-color:rgb(230,230,230); width: 20%; color:#000000 ;">
         <col span="1" style="background-color:rgb(200,200,200); width: 15%; color:#000000 ;">
@@ -251,17 +252,16 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <th colspan="1"><div class="heading">z</div></th>
       </tr>
       <tr>
-        <td><div class="bodytext">Position</div></td>
+        <td><div class="bodytext">Position [steps]</div></td>
         <td><div class="tabledata" id = "x1"></div></td>
         <td><div class="tabledata" id = "y1"></div></td>
         <td><div class="tabledata" id = "z1"></div></td>
       </tr>
       </table>
     </div>
+    <br>    
     <br>
-    <div class="category">Driver</div>
-    <br>
-    <div class="bodytext">Move Stage [steps] </div>
+    <div class="bodytext">Move Stage</div>
     <br>
     <br>
     <div class="bodytext">x:  </div>
@@ -272,17 +272,20 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <input type="number" class="move_input" id = "z_steps" value = "10" width = "0%" "/>
     <br>
     <button type="button" class = "btn" id = "btn0" onclick="move_sample(x_steps.value, y_steps.value, z_steps.value)">move</button>
-    <button type="button" class = "btn" onclick="go_to_base()">go to base</button>
-    <button type="button" class = "btn" onclick="reset_base()">reset base</button>
+    <button type="button" class = "btn" onclick="go_to_base()" style="background-color:rgb(100,100,0);" >go to base</button>
+    <button type="button" class = "btn" onclick="reset_base()" style="background-color:rgb(100,100,0);" >reset base</button>
     </div>
     <br>
     <br>
     <br>
-    <div class="bodytext">Measure scan range [steps]</div>
+    <div class="bodytext">Measure <button type="button" class = "btn" id = "btn1" onclick="measure()" style="background-color:rgb(200,0,0);">Measure start</button>
+    </div> 
     <br>
-    <button type="button" class = "btn" id = "btn1" style="width: 50%; height = 50px" onclick="measure()">Measure start</button>
     <br>
-    <table style="width:50%">
+    <div class="bodytext">Scan range:</div> 
+    <br>
+    <br>
+    <table style="width:60%">
       <colgroup>
         <col span="1" style="background-color:rgb(230,230,230); width: 15%; color:#000000 ;">
         <col span="1" style="background-color:rgb(200,200,200); width: 15%; color:#000000 ;">
@@ -326,23 +329,27 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       
       </table>
     <br>
-    <button type="button" class = "btn" onclick="set_frame_size()">Set frame size</button>
-    <button type="button" class = "btn" onclick="set_scan_range()">Set scan range</button>
+    <button type="button" class = "btn" onclick="set_frame_size()" style="background-color:rgb(0,100,0);">Set frame size</button>
+    <button type="button" class = "btn" onclick="set_scan_range()" style="background-color:rgb(0,100,0);">Set scan range</button>
     <button type="button" class = "btn" onclick="drive_x_scan_range()">drive x range</button>
     <button type="button" class = "btn" onclick="drive_y_scan_range()">drive y range</button>
     <br>
-    <table style="width:50%">
+    <br>
+    <div class="bodytext">Focus settings:</div>
+    <br>
+    <br>
+    <table style="width:40%">
       <colgroup>
         <col span="1" style="background-color:rgb(230,230,230); width: 15%; color:#000000 ;">
-        <col span="1" style="background-color:rgb(200,200,200); width: 15%; color:#000000 ;">
-        <col span="1" style="background-color:rgb(180,180,180); width: 15%; color:#000000 ;">
-        <col span="1" style="background-color:rgb(180,180,180); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(0,0,100); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(0,0,100); width: 15%; color:#000000 ;">
+        <col span="1" style="background-color:rgb(100,0,0); width: 15%; color:#000000 ;">
       </colgroup>
       <tr>
         <th colspan="1"><div class="heading"></div></th>
         <th colspan="1"><div class="heading">x focus range</div></th>
         <th colspan="1"><div class="heading">y focus range</div></th>
-        <th colspan="1"><div class="heading">stacking steps</div></th>
+        <th colspan="1"><div class="heading">stack steps</div></th>
       </tr>
       <tr>
         <td><div class="bodytext">z</div></td>
@@ -353,22 +360,18 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       
       </table>
     <br>
-    <button type="button" class = "btn" onclick="set_x_focus_range()">Set x focus range</button>
-    <button type="button" class = "btn" onclick="set_y_focus_range()">Set y focus range</button>
-    <button type="button" class = "btn" onclick="add_stack_step()">Add stack step</button>
-    <button type="button" class = "btn" onclick="reset_stack()">Reset stacking</button>
-    <button type="button" class = "btn" onclick="set_stack_start()">Set stack start</button>
+    <button type="button" class = "btn" onclick="set_x_focus_range()" style="background-color:rgb(0,0,100);">Set x focus range</button>
+    <button type="button" class = "btn" onclick="set_y_focus_range()" style="background-color:rgb(0,0,100);">Set y focus range</button>
+    <button type="button" class = "btn" onclick="set_stack_start()" style="background-color:rgb(100,0,0);">Set stack start</button>
+    <button type="button" class = "btn" onclick="add_stack_step()" style="background-color:rgb(100,0,0);">Add stack step</button>
+    <button type="button" class = "btn" onclick="reset_stack()" style="background-color:rgb(100,0,0);">Reset stack</button>
     <button type="button" class = "btn" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
     <br>
-    <br>
-    
+    <br>   
   </main>
-
-  <footer div class="foot" id = "temp" >ESP32 Web Page Creation and Data Update Demo</div></footer>
-  
+  <footer div class="foot" id = "temp" >Magnificent Matter</div></footer>
   </body>
-
 
   <script type = "text/javascript">
   
