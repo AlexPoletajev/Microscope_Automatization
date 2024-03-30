@@ -123,6 +123,8 @@ void loop() {
 
 void on_button_scan() {
   scanner->set_focus_range({ x_focus_range, y_focus_range });
+  scanner->set_frame_size(frame_size);
+  scanner->set_scan_range(scan_range);
   scanner->scan();
   update_motor_position();
 }
@@ -130,8 +132,6 @@ void on_button_scan() {
 void on_button_set_frame_size() {
   for (int i = 0; i < measure_diff.size(); ++i)
     frame_size.at(i) = abs(measure_diff.at(i));
-
-  scanner->set_frame_size(frame_size);
 
   std::cout << "set frame size" << std::endl;
 }
@@ -150,7 +150,6 @@ void on_button_set_y_focus_range() {
 
 void on_button_set_scan_range() {
   scan_range = measure_diff;
-  scanner->set_scan_range(scan_range);
 
   std::cout << "set scan range" << std::endl;
 }
@@ -195,7 +194,7 @@ void on_button_set_stack_start() {
 
 void update_motor_position() {
   motor_position = mot_driver->get_position();
-  
+
   for (int i = 0; i < motor_position.size(); ++i)
     motor_position.at(i) -= coordinate_base.at(i);
 }
@@ -220,14 +219,14 @@ void on_button_move() {
 void on_button_reset_base() {
   for (int i = 0; i < motor_position.size(); ++i)
     coordinate_base.at(i) += motor_position.at(i);
- // coordinate_base = motor_position;
+  // coordinate_base = motor_position;
   update_motor_position();
-  
-  std::cout << "new base at" 
-  << " x = " << coordinate_base.at(0) 
-  << ", y = " << coordinate_base.at(1) 
-  << ", z = " << coordinate_base.at(2) 
-  << std::endl;
+
+  std::cout << "new base at"
+            << " x = " << coordinate_base.at(0)
+            << ", y = " << coordinate_base.at(1)
+            << ", z = " << coordinate_base.at(2)
+            << std::endl;
 }
 
 void on_button_go_to_base() {

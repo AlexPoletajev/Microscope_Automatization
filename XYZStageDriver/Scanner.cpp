@@ -16,6 +16,12 @@ bool calc_direction(int value) {
 void Scanner::scan() {
   start_coordinates = motor_driver->get_position();
 
+  if (frame_size.at(0) <= 0 || frame_size.at(1) <= 0 || scan_range.at(0) == 0 || scan_range.at(1) == 0) {
+    std::cout << "error: invalid scan range or frame size" << std::endl;
+    return;
+  }
+
+  // to DO: make safe in case of zero values
   int x_steps_per_frame = 2 * frame_size.at(0) / 3;
   if (x_steps_per_frame < 1)
     x_steps_per_frame = 1;
