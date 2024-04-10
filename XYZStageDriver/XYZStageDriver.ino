@@ -5,7 +5,7 @@
 #include <WebServer.h>  // standard library
 #include "WebCode.h"    // .h file that stores your html page code
 
-//#define USE_INTRANET
+#define USE_INTRANET
 
 #define LOCAL_SSID "Heimsucht"
 #define LOCAL_PASS "DasLebenIstSchoen"
@@ -94,7 +94,7 @@ void setup() {
   server.on("/B_SCANRANGE", on_button_set_scan_range);
   server.on("/B_DRIVEXRANGE", on_button_drive_x_scan_range);
   server.on("/B_DRIVEYRANGE", on_button_drive_y_scan_range);
-  server.on("/B_ADDSTACK", on_button_add_stack_step);
+  server.on("/B_ADDSTACK", on_button_set_stack_range);
   server.on("/B_RESETSTACK", on_button_reset_stack);
   server.on("/B_STACKSTART", on_button_set_stack_start);
   server.on("/B_RESETBASE", on_button_reset_base);
@@ -174,8 +174,8 @@ void on_button_drive_y_scan_range() {
   std::cout << "drive y scan range" << std::endl;
 }
 
-void on_button_add_stack_step() {
-  scanner->add_stack_step(motor_position.at(2) - stack_start_position);
+void on_button_set_stack_range() {
+  scanner->set_stack_range(motor_position.at(2) - stack_start_position);
 
   std::cout << "stacking step " << motor_position.at(2) - stack_start_position << " added" << std::endl;
 }
@@ -322,7 +322,7 @@ void SendXML() {
   sprintf(buf, "<YFR>%d</YFR>\n", y_focus_range);
   strcat(XML, buf);
 
-  sprintf(buf, "<SS>%d</SS>\n", scanner->stack_size());
+  sprintf(buf, "<SS>%d</SS>\n", scanner->get_stack_range());
   strcat(XML, buf);
 
   strcat(XML, "</Data>\n");

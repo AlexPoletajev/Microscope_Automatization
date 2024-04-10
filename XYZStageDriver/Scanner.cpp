@@ -2,10 +2,10 @@
 #include "ControlRoom.h"
 
 void Scanner::shoot() {
-  // delay(300);
-  // digitalWrite (transistor_pin, HIGH);
-  // delay(300);
-  // digitalWrite (transistor_pin, LOW);
+  delay(300);
+  digitalWrite (transistor_pin, HIGH);
+  delay(300);
+  digitalWrite (transistor_pin, LOW);
   std::cout << "shoot();" << std::endl;
 }
 
@@ -87,6 +87,18 @@ void Scanner::scan() {
   motor_driver->go_to_position(start_coordinates);
   std::cout << "scanning done" << std::endl;
 }
+
+void Scanner::set_stack_range(int value){
+  stack_range = value;
+  int stack_step = value / STACKSIZE;
+  for (int i = 1; i <= STACKSIZE; ++i){
+    if (i < STACKSIZE)
+      stacking_steps.push_back(i * stack_step);
+    else
+      stacking_steps.push_back(value);
+  }
+}
+  
 
 void Scanner::shoot_stack() {
   if (!stacking_steps.empty()) {

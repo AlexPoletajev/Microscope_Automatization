@@ -27,6 +27,8 @@ void MotorDriver::go_to_position(std::vector<int> position) {
   int steps{ 0 }, i{ 0 };
   bool dir;
   std::vector<bool> direction = { XDIR, YDIR, ZDIR };
+  std::vector<int> delays = { DELAY, DELAY, ZDELAY };
+
 
   for (auto [type, ptr] : active_motors) {
     steps = position.at(i) - ptr->get_position();
@@ -38,7 +40,7 @@ void MotorDriver::go_to_position(std::vector<int> position) {
       std::cout << enum2string(type) << " goes to position: " << position.at(i) << std::endl;
       //std::cout << enum2string(type) << " has to go       : " << steps << std::endl;
 
-      ptr->walk(abs(steps), dir, DELAY);
+      ptr->walk(abs(steps), dir, delays.at(i));
     }
     ++i;
   }

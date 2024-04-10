@@ -347,9 +347,9 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       </colgroup>
       <tr>
         <th colspan="1"><div class="heading"></div></th>
-        <th colspan="1"><div class="heading">x focus range</div></th>
-        <th colspan="1"><div class="heading">y focus range</div></th>
-        <th colspan="1"><div class="heading">stack steps</div></th>
+        <th colspan="1"><div class="heading">x focus correction</div></th>
+        <th colspan="1"><div class="heading">y focus correction</div></th>
+        <th colspan="1"><div class="heading">stack range</div></th>
       </tr>
       <tr>
         <td><div class="bodytext">z</div></td>
@@ -360,10 +360,10 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       
       </table>
     <br>
-    <button type="button" class = "btn" onclick="set_x_focus_range()" style="background-color:rgb(0,0,100);">Set x focus range</button>
-    <button type="button" class = "btn" onclick="set_y_focus_range()" style="background-color:rgb(0,0,100);">Set y focus range</button>
+    <button type="button" class = "btn" onclick="set_x_focus_range()" style="background-color:rgb(0,0,100);">Set x focus correction</button>
+    <button type="button" class = "btn" onclick="set_y_focus_range()" style="background-color:rgb(0,0,100);">Set y focus correction</button>
     <button type="button" class = "btn" onclick="set_stack_start()" style="background-color:rgb(100,0,0);">Set stack start</button>
-    <button type="button" class = "btn" onclick="add_stack_step()" style="background-color:rgb(100,0,0);">Add stack step</button>
+    <button type="button" class = "btn" onclick="set_stack_range()" style="background-color:rgb(100,0,0);">set stack range</button>
     <button type="button" class = "btn" onclick="reset_stack()" style="background-color:rgb(100,0,0);">Reset stack</button>
     <button type="button" class = "btn" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
@@ -503,7 +503,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     }
     
 
-    function add_stack_step() {
+    function set_stack_range() {
       var xhttp = new XMLHttpRequest(); 
       
       xhttp.open("PUT", "B_ADDSTACK", false);

@@ -17,7 +17,7 @@ struct joy_stick_data {
 
 class Scanner {
   std::shared_ptr<MotorDriver> motor_driver{ nullptr };
-  int focal_range{ 0 };
+  int stack_range{ 0 };
   std::vector<int> scan_range, frame_size, focus_range, start_coordinates, focus_steps_per_frame;
   int transistor_pin{ 0 };
   std::vector<int> stacking_steps;
@@ -44,19 +44,18 @@ public:
     focus_range = range;
     std::cout << "set focus range()" << std::endl;
   }
-  void add_stack_step(int value) {
-    stacking_steps.push_back(value);
-  }
+
   void reset_stack() {
     stacking_steps.clear();
   }
-  int stack_size() {
-    return stacking_steps.size();
+  int get_stack_range() {
+    return stack_range;
   }
-
+  void set_stack_range(int value);
   void shoot();
   void shoot_stack();
   void scan();
+  
 };
 
 #endif
