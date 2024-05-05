@@ -2,9 +2,9 @@
 #include "ControlRoom.h"
 
 void Scanner::shoot() {
-  delay(300);
+  delay(100);
   digitalWrite (transistor_pin, HIGH);
-  delay(300);
+  delay(250);
   digitalWrite (transistor_pin, LOW);
   std::cout << "shoot();" << std::endl;
 }
@@ -21,24 +21,32 @@ void Scanner::scan() {
     return;
   }
 
+  float overlap = 0.4;
+
   // to DO: make safe in case of zero values
-  int x_steps_per_frame = 2 * frame_size.at(0) / 3;
+  int x_steps_per_frame = frame_size.at(0) * (1.0 - overlap);
   if (x_steps_per_frame < 1)
     x_steps_per_frame = 1;
   int x_num_frames = abs(scan_range.at(0) / x_steps_per_frame);
   x_steps_per_frame = scan_range.at(0) / x_num_frames;
 
-  int y_steps_per_frame = 2 * frame_size.at(1) / 3;
+  int y_steps_per_frame = frame_size.at(1) * (1.0 - overlap);
   if (y_steps_per_frame < 1)
     y_steps_per_frame = 1;
   int y_num_frames = abs(scan_range.at(1) / y_steps_per_frame);
   y_steps_per_frame = scan_range.at(1) / y_num_frames;
 
   int x_correction{ 0 }, y_correction{ 0 };
-  if ((scan_range.at(0) - x_steps_per_frame * x_num_frames) > (frame_size.at(0) / 6))
-    x_correction = scan_range.at(0) - x_steps_per_frame * x_num_frames;
-  if ((scan_range.at(1) - y_steps_per_frame * y_num_frames) > (frame_size.at(1) / 6))
-    y_correction = scan_range.at(0) - y_steps_per_frame * y_num_frames;
+  // if ((scan_range.at(0) - x_steps_per_frame * x_num_frames) > (frame_size.at(0) / 6)){
+  //   x_correction = scan_range.at(0) - x_steps_per_frame * x_num_frames;
+  //   std::cout << "x_correction = " << x_correction << std::endl;
+  // } 
+  // if ((scan_range.at(1) - y_steps_per_frame * y_num_frames) > (frame_size.at(1) / 6)){
+  //   y_correction = scan_range.at(1) - y_steps_per_frame * y_num_frames;
+  //   std::cout << "y_correction = " << y_correction << std::endl;
+  // }
+    
+  
 
   bool x_direction = x_steps_per_frame > 0 ? XDIR : !XDIR;
   bool y_direction = y_steps_per_frame > 0 ? YDIR : !YDIR;

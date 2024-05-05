@@ -31,16 +31,16 @@ const bool ZDIR  =         true;
 #define EN 8
 
 // - Scanning
-#define XSTEPSPERPICTURE  340
-#define YSTEPSPERPICTURE  125
-#define XSCANRANGE        6500//1000//6540
-#define YSCANRANGE        2600//600//1320
+#define XSTEPSPERPICTURE  250//340
+#define YSTEPSPERPICTURE  100//128
+#define XSCANRANGE        6100//6500//1000//6540
+#define YSCANRANGE        2650//2500//600//1320
 #define ZSCANRANGE        0
 #define DELAY             2000
 #define ZDELAY            100
 #define XFRAMES           412
 #define YFRAMES           260
-#define STACKSIZE         15
+#define STACKSIZE         24
 
 enum m_type { xMotor,
               yMotor,
