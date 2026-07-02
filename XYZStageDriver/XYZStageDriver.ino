@@ -41,8 +41,8 @@ IPAddress ip;
 
 WebServer server(80);
 
-// sate variable to track measuring procedure
 bool measure_on = false;
+bool  timelapse_on = false;
 
 using namespace std;
 std::shared_ptr<MotorDriver> mot_driver;
@@ -100,6 +100,7 @@ void setup() {
   server.on("/B_RESETBASE", on_button_reset_base);
   server.on("/B_GOBASE", on_button_go_to_base);
   server.on("/B_SCAN", on_button_scan);
+  server.on("/B_TLAPSE", on_button_timelapse);
 
   server.begin();
 
@@ -250,6 +251,34 @@ void on_button_measure() {
   }
   measure_on = !measure_on;
 }
+
+void on_button_timelapse(){
+  if (timelapse_on) {
+    server.send(200, "text/plain", "Start timelapse");
+  std::cout << "shoot();" << std::endl;
+  } else {
+    int timelapse_delay = server.arg("tl_delay").toInt();
+    std::cout << "time lapse delay is: " << timelapse_delay << std::endl;
+
+    while(true)
+    {
+      shoot();
+      delay(timelapse_delay);
+    }
+    server.send(200, "text/plain", "Stop timelapse");
+  }
+  timelapse_on = !timelapse_on;
+  std::cout << "time lapse is: " << timelapse_on << std::endl;
+}
+
+void shoot() {
+  delay(100);
+  digitalWrite (TRANSISTOR, HIGH);
+  delay(250);
+  digitalWrite (TRANSISTOR, LOW);
+  std::cout << "shoot();" << std::endl;
+}
+
 
 void SendWebsite() {
 

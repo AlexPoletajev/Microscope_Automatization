@@ -368,6 +368,11 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <button type="button" class = "btn" onclick="scan()" style="background-color: #006400;" >Scan</button>
     </div>
     <br>
+    <br>
+    <div class="bodytext">x:  </div>
+    <input type="number" class="move_input" id = "tl_delay" value = "100" width = "0%" "/>
+    <div class="bodytext"><button type="button" class = "btn" id = "lapse" onclick="timelapse()" style="background-color:rgb(200,0,0);">Shoot Timeplapse</button>
+    </div> 
     <br>   
   </main>
   <footer div class="foot" id = "temp" >Magnificent Matter</div></footer>
@@ -443,6 +448,20 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       }
       
       xhttp.open("PUT", "B_MEASURE", false);
+      xhttp.send(); 
+    }
+
+    function timelapse() {
+      var xhttp = new XMLHttpRequest(); 
+
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          // update the web based on reply from  ESP
+          document.getElementById("lapse").innerHTML=this.responseText;
+        }
+      }
+      
+      xhttp.open("PUT", "B_TLAPSE", false);
       xhttp.send(); 
     }
 
