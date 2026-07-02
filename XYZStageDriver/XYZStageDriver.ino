@@ -42,7 +42,19 @@ IPAddress ip;
 WebServer server(80);
 
 bool measure_on = false;
-bool  timelapse_on = false;
+bool timelapse_on = false;
+unsigned long timelapse_delay_ms{ 1000 };
+unsigned long last_timelapse_shot_ms{ 0 };
+
+std::vector<int> jog_command{ 0, 0, 0 };
+std::vector<unsigned long> jog_last_step_us{ 0, 0, 0 };
+unsigned long jog_last_command_ms{ 0 };
+
+const unsigned long JOG_TIMEOUT_MS{ 350 };
+const int JOG_DEADZONE{ 8 };
+const int JOG_MIN_STEP_DELAY_US{ 800 };
+const int JOG_MAX_STEP_DELAY_US{ 12000 };
+const int MIN_TIMELAPSE_DELAY_MS{ 500 };
 
 using namespace std;
 std::shared_ptr<MotorDriver> mot_driver;
@@ -101,6 +113,8 @@ void setup() {
   server.on("/B_GOBASE", on_button_go_to_base);
   server.on("/B_SCAN", on_button_scan);
   server.on("/B_TLAPSE", on_button_timelapse);
+  server.on("/B_JOG", on_button_jog);
+  server.on("/B_JOGSTOP", on_button_jog_stop);
 
   server.begin();
 
@@ -119,6 +133,8 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  update_live_control();
+  update_timelapse();
   update_motor_position();
 }
 
@@ -252,23 +268,29 @@ void on_button_measure() {
   measure_on = !measure_on;
 }
 
-void on_button_timelapse(){
+void on_button_timelapse() {
   if (timelapse_on) {
+    timelapse_on = false;
     server.send(200, "text/plain", "Start timelapse");
-  std::cout << "shoot();" << std::endl;
   } else {
-    int timelapse_delay = server.arg("tl_delay").toInt();
-    std::cout << "time lapse delay is: " << timelapse_delay << std::endl;
-
-    while(true)
-    {
-      shoot();
-      delay(timelapse_delay);
-    }
+    timelapse_delay_ms = max(server.arg("tl_delay").toInt(), MIN_TIMELAPSE_DELAY_MS);
+    last_timelapse_shot_ms = 0;
+    timelapse_on = true;
+    std::cout << "time lapse delay is: " << timelapse_delay_ms << std::endl;
     server.send(200, "text/plain", "Stop timelapse");
   }
-  timelapse_on = !timelapse_on;
   std::cout << "time lapse is: " << timelapse_on << std::endl;
+}
+
+void update_timelapse() {
+  if (!timelapse_on)
+    return;
+
+  unsigned long now = millis();
+  if (last_timelapse_shot_ms == 0 || now - last_timelapse_shot_ms >= timelapse_delay_ms) {
+    last_timelapse_shot_ms = now;
+    shoot();
+  }
 }
 
 void shoot() {
@@ -277,6 +299,56 @@ void shoot() {
   delay(250);
   digitalWrite (TRANSISTOR, LOW);
   std::cout << "shoot();" << std::endl;
+}
+
+int clamp_jog_value(int value) {
+  if (value > 100)
+    return 100;
+  if (value < -100)
+    return -100;
+  return value;
+}
+
+void on_button_jog() {
+  jog_command.at(0) = clamp_jog_value(server.arg("x").toInt());
+  jog_command.at(1) = clamp_jog_value(server.arg("y").toInt());
+  jog_command.at(2) = clamp_jog_value(server.arg("z").toInt());
+  jog_last_command_ms = millis();
+  server.send(200, "text/plain", "OK");
+}
+
+void on_button_jog_stop() {
+  for (int i = 0; i < jog_command.size(); ++i)
+    jog_command.at(i) = 0;
+
+  server.send(200, "text/plain", "OK");
+}
+
+void update_live_control() {
+  if (millis() - jog_last_command_ms > JOG_TIMEOUT_MS) {
+    for (int i = 0; i < jog_command.size(); ++i)
+      jog_command.at(i) = 0;
+  }
+
+  unsigned long now_us = micros();
+  m_type motors[] = { xMotor, yMotor, zMotor };
+  bool positive_dirs[] = { XDIR, YDIR, ZDIR };
+
+  for (int i = 0; i < jog_command.size(); ++i) {
+    int speed = jog_command.at(i);
+    int abs_speed = abs(speed);
+
+    if (abs_speed < JOG_DEADZONE)
+      continue;
+
+    int step_delay = map(abs_speed, JOG_DEADZONE, 100, JOG_MAX_STEP_DELAY_US, JOG_MIN_STEP_DELAY_US);
+
+    if (now_us - jog_last_step_us.at(i) >= static_cast<unsigned long>(step_delay * 2)) {
+      bool dir = speed > 0 ? positive_dirs[i] : !positive_dirs[i];
+      mot_driver->make_step_with_motor(motors[i], 1, dir, step_delay);
+      jog_last_step_us.at(i) = micros();
+    }
+  }
 }
 
 

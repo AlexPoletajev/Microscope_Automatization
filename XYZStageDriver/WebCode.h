@@ -186,6 +186,57 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       margin: 14px 12px;
       cursor: pointer;
     }
+    .live_panel {
+      width: min(92vw, 760px);
+      margin-top: 10px;
+    }
+    .xy_pad {
+      position: relative;
+      width: min(92vw, 720px);
+      max-width: 720px;
+      aspect-ratio: 1 / 1;
+      background: #151515;
+      border: 2px solid #404040;
+      border-radius: 8px;
+      touch-action: none;
+      user-select: none;
+      overflow: hidden;
+    }
+    .xy_pad::before,
+    .xy_pad::after {
+      content: "";
+      position: absolute;
+      background: #404040;
+    }
+    .xy_pad::before {
+      left: 50%;
+      top: 0;
+      width: 1px;
+      height: 100%;
+    }
+    .xy_pad::after {
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 1px;
+    }
+    .xy_pad_knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 34px;
+      height: 34px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: #00a86b;
+      box-shadow: 0 0 0 8px rgba(0,168,107,0.18);
+      pointer-events: none;
+    }
+    .live_readout {
+      font-family: "Verdana", "Arial", sans-serif;
+      font-size: 18px;
+      margin-top: 8px;
+    }
     .foot {
       font-family: "Verdana", "Arial", sans-serif;
       font-size: 20px;
@@ -214,7 +265,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     
   </style>
 
-  <body style="background-color: #efefef" onload="process()">
+  <body style="background-color: #efefef" onload="process(); setup_live_pad();">
   
     <header>
       <div class="navbar fixed-top">
@@ -265,15 +316,24 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
     <br>
     <div class="bodytext">x:  </div>
-    <input type="number" class="move_input" id = "x_steps" value = "100" width = "0%" "/>
+    <input type="number" class="move_input" id = "x_steps" value = "100" />
     <div class="bodytext">y:  </div>
-    <input type="number" class="move_input" id = "y_steps" value = "100" width = "0%" "/>
+    <input type="number" class="move_input" id = "y_steps" value = "100" />
     <div class="bodytext">z:  </div>
-    <input type="number" class="move_input" id = "z_steps" value = "10" width = "0%" "/>
+    <input type="number" class="move_input" id = "z_steps" value = "10" />
     <br>
     <button type="button" class = "btn" id = "btn0" onclick="move_sample(x_steps.value, y_steps.value, z_steps.value)">move</button>
     <button type="button" class = "btn" onclick="go_to_base()" style="background-color:rgb(100,100,0);" >go to base</button>
     <button type="button" class = "btn" onclick="reset_base()" style="background-color:rgb(100,100,0);" >reset base</button>
+    </div>
+    <br>
+    <div class="bodytext">Live XY Control</div>
+    <div class="live_panel">
+      <div class="xy_pad" id="xy_pad">
+        <div class="xy_pad_knob" id="xy_pad_knob"></div>
+      </div>
+      <div class="live_readout" id="xy_readout">x: 0 y: 0</div>
+      <button type="button" class = "btn" onclick="stop_jog()" style="background-color:rgb(140,0,0);">Stop live move</button>
     </div>
     <br>
     <br>
@@ -369,9 +429,9 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     </div>
     <br>
     <br>
-    <div class="bodytext">x:  </div>
-    <input type="number" class="move_input" id = "tl_delay" value = "100" width = "0%" "/>
-    <div class="bodytext"><button type="button" class = "btn" id = "lapse" onclick="timelapse()" style="background-color:rgb(200,0,0);">Shoot Timeplapse</button>
+    <div class="bodytext">delay [ms]:  </div>
+    <input type="number" class="move_input" id = "tl_delay" value = "1000" />
+    <div class="bodytext"><button type="button" class = "btn" id = "lapse" onclick="timelapse()" style="background-color:rgb(200,0,0);">Shoot Timelapse</button>
     </div> 
     <br>   
   </main>
@@ -461,8 +521,83 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         }
       }
       
-      xhttp.open("PUT", "B_TLAPSE", false);
+      xhttp.open("PUT", "B_TLAPSE?tl_delay=" + document.getElementById("tl_delay").value, false);
       xhttp.send(); 
+    }
+
+    var jog_x = 0;
+    var jog_y = 0;
+    var jog_timer = null;
+
+    function setup_live_pad() {
+      var pad = document.getElementById("xy_pad");
+      if (!pad) {
+        return;
+      }
+
+      pad.addEventListener("pointerdown", function(event) {
+        pad.setPointerCapture(event.pointerId);
+        update_jog_from_pointer(event);
+        if (jog_timer === null) {
+          jog_timer = setInterval(send_jog, 80);
+        }
+        send_jog();
+      });
+
+      pad.addEventListener("pointermove", function(event) {
+        if (jog_timer !== null) {
+          update_jog_from_pointer(event);
+        }
+      });
+
+      pad.addEventListener("pointerup", stop_jog);
+      pad.addEventListener("pointercancel", stop_jog);
+      pad.addEventListener("pointerleave", stop_jog);
+    }
+
+    function update_jog_from_pointer(event) {
+      var pad = document.getElementById("xy_pad");
+      var knob = document.getElementById("xy_pad_knob");
+      var rect = pad.getBoundingClientRect();
+      var radius = Math.min(rect.width, rect.height) / 2;
+      var dx = event.clientX - rect.left - radius;
+      var dy = event.clientY - rect.top - radius;
+      var distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance > radius) {
+        dx = dx / distance * radius;
+        dy = dy / distance * radius;
+      }
+
+      jog_x = Math.round(dx / radius * 100);
+      jog_y = Math.round(-dy / radius * 100);
+      knob.style.left = (50 + dx / radius * 50) + "%";
+      knob.style.top = (50 + dy / radius * 50) + "%";
+      document.getElementById("xy_readout").innerHTML = "x: " + jog_x + " y: " + jog_y;
+    }
+
+    function send_jog() {
+      var xhttp = new XMLHttpRequest();
+      xhttp.open("PUT", "B_JOG?x=" + jog_x + "&y=" + jog_y + "&z=0", true);
+      xhttp.send();
+    }
+
+    function stop_jog() {
+      jog_x = 0;
+      jog_y = 0;
+
+      if (jog_timer !== null) {
+        clearInterval(jog_timer);
+        jog_timer = null;
+      }
+
+      document.getElementById("xy_pad_knob").style.left = "50%";
+      document.getElementById("xy_pad_knob").style.top = "50%";
+      document.getElementById("xy_readout").innerHTML = "x: 0 y: 0";
+
+      var xhttp = new XMLHttpRequest();
+      xhttp.open("PUT", "B_JOGSTOP", true);
+      xhttp.send();
     }
 
     function set_frame_size() {
