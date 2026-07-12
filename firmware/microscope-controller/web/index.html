@@ -29,7 +29,13 @@
       </div>
     </header>
 
-    <section class="workspace">
+    <nav class="view-tabs" aria-label="Ansicht">
+      <button class="view-tab active" type="button" data-view="control-view">Steuerung</button>
+      <button class="view-tab" type="button" data-view="scan-view">Scan</button>
+      <button class="view-tab" type="button" data-view="system-view">System</button>
+    </nav>
+
+    <section id="control-view" class="workspace app-view active">
       <div class="pad-panel">
         <div class="axis-label axis-y">Y</div>
         <div class="axis-label axis-x">X</div>
@@ -79,6 +85,68 @@
           <button id="reset-controller" class="reset-button" type="button">Controller zurücksetzen</button>
         </div>
       </aside>
+    </section>
+
+    <section id="scan-view" class="app-view scan-workspace" hidden>
+      <div class="scan-header">
+        <div>
+          <h2>Scanprofil</h2>
+          <p id="scan-lock-state">Kalibrierung ausstehend</p>
+        </div>
+        <button id="save-scan-profile" class="command-button compact" type="button">Profil speichern</button>
+      </div>
+
+      <div class="scan-grid">
+        <section class="scan-settings" aria-label="Scanbereich">
+          <div class="panel-heading"><h2>Scanbereich</h2><span>mm</span></div>
+          <div class="field-grid">
+            <label>Breite<input id="scan-width" type="number" min="0.1" step="0.1" value="10"></label>
+            <label>Höhe<input id="scan-height" type="number" min="0.1" step="0.1" value="10"></label>
+            <label>Bildbreite<input id="frame-width" type="number" min="0.01" step="0.01" value="1"></label>
+            <label>Bildhöhe<input id="frame-height" type="number" min="0.01" step="0.01" value="1"></label>
+            <label>Überlappung<input id="scan-overlap" type="number" min="0" max="80" step="1" value="15"><span class="field-unit">%</span></label>
+            <label>Beruhigung<input id="settle-time" type="number" min="0" max="10000" step="50" value="300"><span class="field-unit">ms</span></label>
+          </div>
+        </section>
+
+        <section class="scan-summary" aria-label="Scanübersicht">
+          <div class="panel-heading"><h2>Übersicht</h2></div>
+          <div class="summary-grid">
+            <div><span>Spalten</span><strong id="scan-columns">13</strong></div>
+            <div><span>Zeilen</span><strong id="scan-rows">13</strong></div>
+            <div><span>Aufnahmen</span><strong id="scan-images">169</strong></div>
+            <div><span>Kamera</span><strong id="camera-state">Nicht eingerichtet</strong></div>
+          </div>
+          <div class="scan-path" id="scan-path" aria-label="Scanpfad"></div>
+        </section>
+      </div>
+
+      <div class="scan-actions">
+        <button id="scan-start" class="primary-button" type="button" disabled>Scan starten</button>
+        <span>Achskalibrierung und Kameratrigger erforderlich</span>
+      </div>
+    </section>
+
+    <section id="system-view" class="app-view system-workspace" hidden>
+      <section class="system-section">
+        <div class="panel-heading"><h2>Maschine</h2><span id="profile-name">Microscope Stage XY</span></div>
+        <div class="system-list">
+          <div><span>X-Achse</span><strong id="system-x">Aktiv · 1/8 · vorläufig</strong></div>
+          <div><span>Y-Achse</span><strong id="system-y">Aktiv · 1/8 · vorläufig</strong></div>
+          <div><span>Z-Achse</span><strong id="system-z">Nicht eingerichtet</strong></div>
+          <div><span>A-Achse</span><strong id="system-a">Nicht eingerichtet</strong></div>
+        </div>
+      </section>
+
+      <section class="system-section">
+        <div class="panel-heading"><h2>Schnittstellen</h2></div>
+        <div class="system-list">
+          <div><span>WebSocket</span><strong id="system-websocket">Offline</strong></div>
+          <div><span>Display</span><strong>UART1 · 115200</strong></div>
+          <div><span>Kamera</span><strong>Nicht eingerichtet</strong></div>
+          <div><span>Endschalter</span><strong>Nicht eingerichtet</strong></div>
+        </div>
+      </section>
     </section>
   </main>
 

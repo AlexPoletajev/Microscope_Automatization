@@ -4,6 +4,11 @@ This directory contains the first DLC32 MAX firmware milestone for direct XY con
 It uses the pinned FluidNC submodule as its motion core and replaces FluidNC's filesystem contents at build time
 with the machine configuration and the installable control web app.
 
+The web app now contains control, scan-profile and system foundations. Scan execution remains locked by
+`web/machine-profile.json` until axis calibration and the camera trigger are commissioned. The vendor display is
+connected as a 115200-baud GRBL client on UART1; its replacement-firmware investigation is documented under
+`display/`.
+
 ## Safety state
 
 The deployed `config.yaml` only defines X and Y. Z and A are documented in `config-4axis.yaml`, but that file is

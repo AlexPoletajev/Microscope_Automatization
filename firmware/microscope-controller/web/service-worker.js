@@ -1,5 +1,5 @@
-const CACHE = "microscope-stage-v1";
-const ASSETS = ["/", "/styles.css", "/app.js", "/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-192.png", "/icon-512.png"];
+const CACHE = "microscope-stage-v2";
+const ASSETS = ["/", "/styles.css", "/app.js", "/machine-profile.json", "/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));

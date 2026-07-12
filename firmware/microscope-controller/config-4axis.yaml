@@ -13,6 +13,16 @@ stepping:
 kinematics:
   Cartesian:
 
+uart1:
+  txd_pin: gpio.17
+  rxd_pin: gpio.18
+  baud: 115200
+  mode: 8N1
+
+uart_channel1:
+  report_interval_ms: 250
+  uart_num: 1
+
 axes:
   shared_stepper_disable_pin: gpio.8
   shared_stepper_reset_pin: NO_PIN

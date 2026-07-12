@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "machineName": "Microscope Stage XY",
+  "calibrationState": "pending",
+  "scanEnabled": false,
+  "axes": {
+    "x": { "enabled": true, "stepsPerMm": 80, "microsteps": 8, "directionInverted": true },
+    "y": { "enabled": true, "stepsPerMm": 80, "microsteps": 8, "directionInverted": false },
+    "z": { "enabled": false },
+    "a": { "enabled": false }
+  },
+  "camera": { "enabled": false, "output": "gpio.38" },
+  "display": { "transport": "uart1", "baud": 115200 }
+}

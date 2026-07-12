@@ -24,7 +24,24 @@
     zero: document.querySelector("#zero-position"),
     stop: document.querySelector("#jog-stop"),
     reset: document.querySelector("#reset-controller"),
-    toast: document.querySelector("#toast")
+    toast: document.querySelector("#toast"),
+    tabs: [...document.querySelectorAll(".view-tab")],
+    views: [...document.querySelectorAll(".app-view")],
+    scanWidth: document.querySelector("#scan-width"),
+    scanHeight: document.querySelector("#scan-height"),
+    frameWidth: document.querySelector("#frame-width"),
+    frameHeight: document.querySelector("#frame-height"),
+    scanOverlap: document.querySelector("#scan-overlap"),
+    settleTime: document.querySelector("#settle-time"),
+    scanColumns: document.querySelector("#scan-columns"),
+    scanRows: document.querySelector("#scan-rows"),
+    scanImages: document.querySelector("#scan-images"),
+    scanPath: document.querySelector("#scan-path"),
+    scanStart: document.querySelector("#scan-start"),
+    scanLockState: document.querySelector("#scan-lock-state"),
+    saveScanProfile: document.querySelector("#save-scan-profile"),
+    profileName: document.querySelector("#profile-name"),
+    systemWebsocket: document.querySelector("#system-websocket")
   };
 
   let socket = null;
@@ -35,11 +52,13 @@
   let activePointer = null;
   let machineState = "Unknown";
   let vector = { x: 0, y: 0, magnitude: 0 };
+  let machineProfile = null;
 
   function setConnection(state, label) {
     elements.connection.dataset.state = state;
     elements.connectionLabel.textContent = label;
     elements.zero.disabled = state !== "online";
+    elements.systemWebsocket.textContent = label;
   }
 
   function showToast(message) {
@@ -220,6 +239,96 @@
     if (sendCancel) sendRealtime(JOG_CANCEL);
   }
 
+  function selectView(viewId) {
+    stopJog();
+    for (const view of elements.views) {
+      const active = view.id === viewId;
+      view.hidden = !active;
+      view.classList.toggle("active", active);
+    }
+    for (const tab of elements.tabs) tab.classList.toggle("active", tab.dataset.view === viewId);
+  }
+
+  function positiveNumber(input, fallback) {
+    const value = Number.parseFloat(input.value);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  }
+
+  function axisPositions(span, frame, overlap) {
+    if (span <= frame) return 1;
+    const stride = frame * (1 - overlap / 100);
+    return Math.max(1, Math.ceil((span - frame) / stride) + 1);
+  }
+
+  function updateScanSummary() {
+    const width = positiveNumber(elements.scanWidth, 10);
+    const height = positiveNumber(elements.scanHeight, 10);
+    const frameWidth = positiveNumber(elements.frameWidth, 1);
+    const frameHeight = positiveNumber(elements.frameHeight, 1);
+    const overlap = Math.min(80, Math.max(0, Number.parseFloat(elements.scanOverlap.value) || 0));
+    const columns = axisPositions(width, frameWidth, overlap);
+    const rows = axisPositions(height, frameHeight, overlap);
+    elements.scanColumns.textContent = String(columns);
+    elements.scanRows.textContent = String(rows);
+    elements.scanImages.textContent = String(columns * rows);
+    renderScanPath(columns, rows);
+  }
+
+  function renderScanPath(columns, rows) {
+    const fragment = document.createDocumentFragment();
+    const maxDots = 240;
+    const stride = Math.max(1, Math.ceil((columns * rows) / maxDots));
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        if ((row * columns + column) % stride !== 0) continue;
+        const dot = document.createElement("span");
+        const pathColumn = row % 2 === 0 ? column : columns - column - 1;
+        dot.style.left = `${columns === 1 ? 50 : 5 + pathColumn * 90 / (columns - 1)}%`;
+        dot.style.top = `${rows === 1 ? 50 : 8 + row * 84 / (rows - 1)}%`;
+        fragment.append(dot);
+      }
+    }
+    elements.scanPath.replaceChildren(fragment);
+  }
+
+  function scanProfileValues() {
+    return {
+      widthMm: positiveNumber(elements.scanWidth, 10),
+      heightMm: positiveNumber(elements.scanHeight, 10),
+      frameWidthMm: positiveNumber(elements.frameWidth, 1),
+      frameHeightMm: positiveNumber(elements.frameHeight, 1),
+      overlapPercent: Number.parseFloat(elements.scanOverlap.value) || 0,
+      settleMs: Number.parseInt(elements.settleTime.value, 10) || 0
+    };
+  }
+
+  function restoreScanProfile() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("microscope.scanProfile"));
+      if (!saved) return;
+      const mapping = { scanWidth: "widthMm", scanHeight: "heightMm", frameWidth: "frameWidthMm", frameHeight: "frameHeightMm", scanOverlap: "overlapPercent", settleTime: "settleMs" };
+      for (const [elementName, key] of Object.entries(mapping)) {
+        if (Number.isFinite(saved[key])) elements[elementName].value = saved[key];
+      }
+    } catch (_) {
+      localStorage.removeItem("microscope.scanProfile");
+    }
+  }
+
+  async function loadMachineProfile() {
+    try {
+      const response = await fetch("/machine-profile.json", { cache: "no-cache" });
+      machineProfile = await response.json();
+      elements.profileName.textContent = machineProfile.machineName;
+      const calibrated = machineProfile.calibrationState === "ready";
+      elements.scanStart.disabled = !(calibrated && machineProfile.scanEnabled && machineProfile.camera.enabled);
+      elements.scanLockState.textContent = calibrated ? "Bereit" : "Kalibrierung ausstehend";
+    } catch (_) {
+      elements.scanLockState.textContent = "Maschinenprofil nicht verfügbar";
+      elements.scanStart.disabled = true;
+    }
+  }
+
   elements.pad.addEventListener("pointerdown", startJog);
   elements.pad.addEventListener("pointermove", moveJog);
   elements.pad.addEventListener("pointerup", () => stopJog());
@@ -238,6 +347,14 @@
     stopJog();
     if (sendText("G10 L20 P0 X0 Y0")) showToast("Arbeitsposition X/Y genullt");
   });
+  for (const tab of elements.tabs) tab.addEventListener("click", () => selectView(tab.dataset.view));
+  for (const input of [elements.scanWidth, elements.scanHeight, elements.frameWidth, elements.frameHeight, elements.scanOverlap, elements.settleTime]) {
+    input.addEventListener("input", updateScanSummary);
+  }
+  elements.saveScanProfile.addEventListener("click", () => {
+    localStorage.setItem("microscope.scanProfile", JSON.stringify(scanProfileValues()));
+    showToast("Scanprofil gespeichert");
+  });
 
   window.addEventListener("blur", () => stopJog());
   window.addEventListener("offline", () => stopJog());
@@ -247,6 +364,9 @@
   });
 
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  restoreScanProfile();
+  updateScanSummary();
+  loadMachineProfile();
   setConnection("offline", "Offline");
   connect();
 })();
