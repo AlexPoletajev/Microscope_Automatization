@@ -26,6 +26,16 @@ python3 -m pip install -r requirements.txt
 The merged 8 MB image is written to `build/microscope-stage-merged.bin`. The build script temporarily stages the
 controller files inside FluidNC and restores the submodule afterwards.
 
+After the initial installation, configuration and web-app changes should be written without erasing Wi-Fi and NVS:
+
+```sh
+./scripts/build.sh
+./scripts/update_filesystem.sh /dev/cu.usbserial-210
+```
+
+This updates only the LittleFS partition at `0x610000`. Use the full `flash.sh` only for firmware-core updates or
+recovery because it replaces the complete flash, including saved Wi-Fi settings.
+
 ## Back up and flash
 
 Connect the board by USB while it is still running the Makerbase firmware:
