@@ -31,4 +31,5 @@ It must not contain independent motion state; all positions and machine states c
 
 The vendor firmware sends realtime `?` followed by proprietary byte `0xE1` and searches for the identity string
 `Grbl_ESP32`. The mainboard startup macro sends that compatibility identity after UART initialization. FluidNC
-answers the standard `?` request; `0xE1` remains under investigation and is currently ignored safely.
+answers the standard `?` request and handles `0xE1` as a display identity request. This explicit handling is also
+required because an isolated `0xE1` would otherwise be interpreted as the start of a three-byte UTF-8 sequence.
