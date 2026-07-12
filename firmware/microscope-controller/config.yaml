@@ -17,6 +17,7 @@ uart1:
   txd_pin: gpio.17
   rxd_pin: gpio.18
   baud: 115200
+  passthrough_baud: 115200
   mode: 8N1
 
 uart_channel1:
@@ -70,6 +71,10 @@ control:
   macro0_pin: NO_PIN
   fault_pin: NO_PIN
   estop_pin: NO_PIN
+
+macros:
+  startup_line0: $Msg/Uart1=Grbl_ESP32
+  startup_line1:
 
 start:
   must_home: false

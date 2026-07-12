@@ -28,3 +28,7 @@ source.
 
 The final display UI will provide status, XY jog, Z focus, scan profile selection, scan progress, pause and cancel.
 It must not contain independent motion state; all positions and machine states come from FluidNC.
+
+The vendor firmware sends realtime `?` followed by proprietary byte `0xE1` and searches for the identity string
+`Grbl_ESP32`. The mainboard startup macro sends that compatibility identity after UART initialization. FluidNC
+answers the standard `?` request; `0xE1` remains under investigation and is currently ignored safely.
