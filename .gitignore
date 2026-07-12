@@ -1,3 +1,16 @@
 # Mac
 *.DS_Store
 
+# Python
+__pycache__/
+*.py[cod]
+
+# Local vendor checkouts and downloaded firmware images
+/firmware/MKS-DLC32/
+/firmware/MKS-DLC32-FIRMWARE/
+/firmware/MKS-DLC32-MAX-extracted/
+
+# Controller build products and device-specific backups
+/firmware/microscope-controller/build/
+/firmware/microscope-controller/backups/
+/firmware/FluidNC/.pio/

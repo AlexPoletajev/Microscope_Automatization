@@ -1,0 +1,3 @@
+[submodule "firmware/FluidNC"]
+	path = firmware/FluidNC
+	url = https://github.com/bdring/FluidNC.git

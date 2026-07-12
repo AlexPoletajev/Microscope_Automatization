@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#171a1d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stage Control">
+  <title>Microscope Stage</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Microscope Stage</h1>
+          <p id="machine-state">Nicht verbunden</p>
+        </div>
+      </div>
+      <div class="connection" id="connection" data-state="offline">
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span id="connection-label">Offline</span>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <div class="pad-panel">
+        <div class="axis-label axis-y">Y</div>
+        <div class="axis-label axis-x">X</div>
+        <div id="xy-pad" class="xy-pad" role="application" aria-label="XY Steuerpad">
+          <div class="crosshair crosshair-x"></div>
+          <div class="crosshair crosshair-y"></div>
+          <div class="deadzone"></div>
+          <div class="pad-vector" id="pad-vector"></div>
+          <div class="pad-handle" id="pad-handle"></div>
+        </div>
+        <div class="vector-readout" aria-live="polite">
+          <span id="vector-direction">STOPP</span>
+          <span id="vector-speed">0 mm/min</span>
+        </div>
+      </div>
+
+      <aside class="controls">
+        <section class="position-panel" aria-label="Position">
+          <div class="panel-heading">
+            <h2>Position</h2>
+            <span>relativ</span>
+          </div>
+          <div class="position-grid">
+            <div><span>X</span><strong id="position-x">0.000</strong><small>mm</small></div>
+            <div><span>Y</span><strong id="position-y">0.000</strong><small>mm</small></div>
+          </div>
+          <button id="zero-position" class="command-button" type="button">Position nullen</button>
+        </section>
+
+        <section class="speed-panel" aria-label="Geschwindigkeit">
+          <div class="panel-heading">
+            <h2>Max. Tempo</h2>
+            <output id="speed-output" for="speed-range">180 mm/min</output>
+          </div>
+          <input id="speed-range" type="range" min="30" max="300" step="10" value="180">
+          <div class="range-labels"><span>Fein</span><span>Schnell</span></div>
+        </section>
+
+        <section class="axis-panel" aria-label="Weitere Achsen">
+          <div class="panel-heading"><h2>Weitere Achsen</h2></div>
+          <div class="disabled-axis"><span>Z</span><span>Noch nicht eingerichtet</span></div>
+          <div class="disabled-axis"><span>A</span><span>Noch nicht eingerichtet</span></div>
+        </section>
+
+        <div class="stop-actions">
+          <button id="jog-stop" class="stop-button" type="button">Bewegung stoppen</button>
+          <button id="reset-controller" class="reset-button" type="button">Controller zurücksetzen</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

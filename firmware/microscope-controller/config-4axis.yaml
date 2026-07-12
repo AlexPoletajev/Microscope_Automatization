@@ -1,0 +1,114 @@
+board: MKS DLC32 MAX V1.0
+name: Microscope Stage XYZA
+meta: Prepared four-axis configuration; calibrate Z and A before deployment
+
+stepping:
+  engine: RMT
+  idle_ms: 255
+  pulse_us: 4
+  dir_delay_us: 2
+  disable_delay_us: 0
+  segments: 12
+
+kinematics:
+  Cartesian:
+
+axes:
+  shared_stepper_disable_pin: gpio.8
+  shared_stepper_reset_pin: NO_PIN
+  homing_runs: 1
+
+  x:
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 300.000
+    acceleration_mm_per_sec2: 20.000
+    max_travel_mm: 300.000
+    soft_limits: false
+    motor0:
+      limit_neg_pin: NO_PIN
+      limit_pos_pin: NO_PIN
+      limit_all_pin: NO_PIN
+      hard_limits: false
+      pulloff_mm: 1.000
+      stepstick:
+        step_pin: gpio.16
+        direction_pin: gpio.15
+        disable_pin: NO_PIN
+
+  y:
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 300.000
+    acceleration_mm_per_sec2: 20.000
+    max_travel_mm: 300.000
+    soft_limits: false
+    motor0:
+      limit_neg_pin: NO_PIN
+      limit_pos_pin: NO_PIN
+      limit_all_pin: NO_PIN
+      hard_limits: false
+      pulloff_mm: 1.000
+      stepstick:
+        step_pin: gpio.7
+        direction_pin: gpio.6
+        disable_pin: NO_PIN
+
+  z:
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 120.000
+    acceleration_mm_per_sec2: 10.000
+    max_travel_mm: 80.000
+    soft_limits: false
+    motor0:
+      limit_neg_pin: NO_PIN
+      limit_pos_pin: NO_PIN
+      limit_all_pin: NO_PIN
+      hard_limits: false
+      pulloff_mm: 0.500
+      stepstick:
+        step_pin: gpio.5
+        direction_pin: gpio.4
+        disable_pin: NO_PIN
+
+  a:
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 120.000
+    acceleration_mm_per_sec2: 10.000
+    max_travel_mm: 100.000
+    soft_limits: false
+    motor0:
+      limit_neg_pin: NO_PIN
+      limit_pos_pin: NO_PIN
+      limit_all_pin: NO_PIN
+      hard_limits: false
+      pulloff_mm: 0.500
+      stepstick:
+        step_pin: gpio.20
+        direction_pin: gpio.19
+        disable_pin: NO_PIN
+
+control:
+  safety_door_pin: NO_PIN
+  reset_pin: NO_PIN
+  feed_hold_pin: NO_PIN
+  cycle_start_pin: NO_PIN
+  macro0_pin: NO_PIN
+  fault_pin: NO_PIN
+  estop_pin: NO_PIN
+
+start:
+  must_home: false
+  deactivate_parking: true
+  check_limits: false
+
+parking:
+  enable: false
+
+probe:
+  pin: NO_PIN
+  toolsetter_pin: NO_PIN
+
+user_outputs:
+  digital0_pin: gpio.38
+
+verbose_errors: true
+report_inches: false
