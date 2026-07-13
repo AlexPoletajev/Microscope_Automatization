@@ -7,7 +7,7 @@
 | MCU module | ESP32-WROOM-32U |
 | USB bridge | CH340C |
 | Display buffer | 74HC125 |
-| Touch controller | XPT2046-compatible marking |
+| Touch controller | FocalTech FT62xx/FT63xx-compatible, I2C address `0x38` |
 | Panel controller | ST7796, 480 x 320 |
 | Backlight | GPIO5, active low |
 | Mainboard link | ESP32 UART0 shared with CH340, 115200 8N1 |
@@ -15,8 +15,7 @@
 
 ## Display mapping
 
-The panel mapping and backlight were verified with the minimal hardware test. Touch CS still needs to be verified
-with an active touch measurement.
+The panel mapping, backlight and capacitive touch interface were verified on the physical display.
 
 | Signal | GPIO | Confidence |
 | --- | ---: | --- |
@@ -27,8 +26,14 @@ with an active touch measurement.
 | TFT DC | 33 | confirmed |
 | TFT reset | 27 | confirmed |
 | Backlight | 5, active low | confirmed |
-| Touch CS | 26 | candidate |
+| Touch SDA | 0 | confirmed |
+| Touch SCL | 4 | confirmed |
+| Touch reset | 21 | confirmed |
+| Touch interrupt | not connected (`-1`) | recovered from vendor firmware |
 | AUX RX | 3 / UART0 RX | confirmed by USB/AUX contention |
 | AUX TX | 1 / UART0 TX | confirmed by USB/AUX contention |
 
 Confirmed panel controller: ST7796, 480 x 320 in landscape orientation.
+
+The touch controller reports coordinates in the panel's native portrait orientation. Landscape screen pixels are
+`x = rawY` and `y = 320 - rawX`; no additional scaling or calibration is required.

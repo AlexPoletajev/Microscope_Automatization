@@ -14,7 +14,8 @@ Makerbase release image identifies it as `YD_V2.0.3_20241116`.
   `0x310000` (960 KB)
 - USB bridge: CH340C
 - Display bus buffer: 74HC125
-- Touch controller: XPT2046-compatible marking on the PCB
+- Touch controller: FocalTech FT62xx/FT63xx-compatible at I2C address `0x38`
+- Touch bus: SDA GPIO0, SCL GPIO4, reset GPIO21, no interrupt pin
 - LCD controller: ST7796, 480 x 320
 - LCD SPI: MISO GPIO19, MOSI GPIO23, SCLK GPIO18, CS GPIO25, DC GPIO33, reset GPIO27
 - Backlight: GPIO5, active low
@@ -22,9 +23,9 @@ Makerbase release image identifies it as `YD_V2.0.3_20241116`.
 - Mainboard transport: UART, 115200 baud
 - DLC32 MAX UART mapping used by this project: mainboard TX GPIO17, RX GPIO18
 
-The panel mapping and backlight have been verified by a custom color-bar firmware. Touch uses an
-XPT2046-compatible controller and GPIO26 is the current CS candidate; it remains unconfirmed until pressed values
-have been observed. The complete original flash snapshot remains the restore source.
+The panel mapping and backlight were verified by a custom color-bar firmware. The capacitive touch controller and
+its direct landscape pixel transform (`x = rawY`, `y = 320 - rawX`) were verified with live corner and drag tests.
+The complete original flash snapshot remains the restore source.
 
 ## Device backup
 
