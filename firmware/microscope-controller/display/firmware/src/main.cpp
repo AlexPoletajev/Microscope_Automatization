@@ -255,8 +255,8 @@ void updatePad(int16_t screenX, int16_t screenY) {
     eraseDynamicPad();
     padState.handleX = padCenterX + static_cast<int16_t>(x * magnitude * (padSize / 2 - 14));
     padState.handleY = padCenterY - static_cast<int16_t>(y * magnitude * (padSize / 2 - 14));
-    padState.vectorX = scaledMagnitude > 0.0F ? x : 0.0F;
-    padState.vectorY = scaledMagnitude > 0.0F ? y : 0.0F;
+    padState.vectorX = scaledMagnitude > 0.0F ? -x : 0.0F;
+    padState.vectorY = scaledMagnitude > 0.0F ? -y : 0.0F;
     padState.magnitude = scaledMagnitude;
     padState.speed = static_cast<int>(maxFeed * scaledMagnitude + 0.5F);
     padState.active = true;
