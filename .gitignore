@@ -12,5 +12,6 @@ __pycache__/
 
 # Controller build products and device-specific backups
 /firmware/microscope-controller/build/
+/firmware/microscope-controller/display/firmware/.pio/
 /firmware/microscope-controller/backups/
 /firmware/FluidNC/.pio/

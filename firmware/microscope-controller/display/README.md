@@ -6,10 +6,16 @@ Makerbase release image identifies it as `YD_V2.0.3_20241116`.
 ## Confirmed hardware state
 
 - MCU: classic ESP32
+- Module: ESP32-WROOM-32U; observed silicon: ESP32-D0WD revision 1.1
 - Flash: 4 MB, QIO, 80 MHz
 - UI stack in the vendor binary: LVGL and TFT_eSPI
 - Vendor image layout: bootloader at `0x1000`, partition table at `0x8000`, app at `0x10000`
-- Partitions: 20 KB NVS, 3 MB OTA application, 960 KB SPIFFS
+- Partitions: NVS `0x9000` (20 KB), OTA data `0xe000` (8 KB), app `0x10000` (3 MB), SPIFFS
+  `0x310000` (960 KB)
+- USB bridge: CH340C
+- Display bus buffer: 74HC125
+- Touch controller: XPT2046-compatible marking on the PCB
+- PCB revision: `ESP-TFT35 V4.1`
 - Mainboard transport: UART, 115200 baud
 - DLC32 MAX UART mapping used by this project: mainboard TX GPIO17, RX GPIO18
 
@@ -17,6 +23,18 @@ The LCD controller, touch controller and their GPIO mapping are not published an
 confidence from the stripped vendor image. Do not replace the display firmware until those signals have been
 identified from the PCB or measured. The vendor image under the ignored Makerbase checkout remains the restore
 source.
+
+## Device backup
+
+The original display was read in 64 KB chunks because long CH340 transfers were not reliable above 115200 baud.
+The verified 4 MB snapshot has SHA-256
+`f4549cc37e471ea13a3e1e2394db768fdb4cbcb2ea1d24d6a18c11a88a6a2a04` and is stored in the ignored local
+`backups/display-20260713-095512` directory. Its first 64 KB also matched an independent read.
+
+Run `scripts/backup_display.sh /dev/cu.usbserial-...` to create another retryable snapshot. AUX must either be
+disconnected while the display has independent power, or the mainboard `uart1` hardware and `uart_channel1` must
+be temporarily absent from its active configuration. Disabling automatic reports alone is insufficient because
+the mainboard UART output and CH340 output remain electrically connected to the same display RX pin.
 
 ## Integration phases
 
