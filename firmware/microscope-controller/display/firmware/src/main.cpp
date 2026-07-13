@@ -33,6 +33,8 @@ void drawTestPattern() {
 
 void setup() {
     Serial.begin(115200);
+    pinMode(TFT_BL, OUTPUT);
+    digitalWrite(TFT_BL, TFT_BACKLIGHT_ON);
     display.init();
     drawTestPattern();
     Serial.println("ESP-TFT35 hardware test ready");

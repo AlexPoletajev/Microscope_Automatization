@@ -15,14 +15,16 @@ Makerbase release image identifies it as `YD_V2.0.3_20241116`.
 - USB bridge: CH340C
 - Display bus buffer: 74HC125
 - Touch controller: XPT2046-compatible marking on the PCB
+- LCD controller: ST7796, 480 x 320
+- LCD SPI: MISO GPIO19, MOSI GPIO23, SCLK GPIO18, CS GPIO25, DC GPIO33, reset GPIO27
+- Backlight: GPIO5, active low
 - PCB revision: `ESP-TFT35 V4.1`
 - Mainboard transport: UART, 115200 baud
 - DLC32 MAX UART mapping used by this project: mainboard TX GPIO17, RX GPIO18
 
-The LCD controller, touch controller and their GPIO mapping are not published and are not recoverable with enough
-confidence from the stripped vendor image. Do not replace the display firmware until those signals have been
-identified from the PCB or measured. The vendor image under the ignored Makerbase checkout remains the restore
-source.
+The panel mapping and backlight have been verified by a custom color-bar firmware. Touch uses an
+XPT2046-compatible controller and GPIO26 is the current CS candidate; it remains unconfirmed until pressed values
+have been observed. The complete original flash snapshot remains the restore source.
 
 ## Device backup
 
