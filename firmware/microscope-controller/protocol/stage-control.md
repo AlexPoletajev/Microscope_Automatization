@@ -38,7 +38,8 @@ recovery action and does not replace a power-cutting emergency stop.
 
 ## Display scan sequence
 
-The display stores frame calibration, two scan corners and scan parameters in its own NVS. It derives an
+The display stores frame calibration and scan parameters in its own NVS. The two scan endpoints are session-only
+and are intentionally discarded on display restart. It derives an
 endpoint-inclusive serpentine grid from the calibrated frame span and requested overlap. For each image it sends
 one absolute XY move, waits for FluidNC to report `Idle`, applies the configured settling delay and optionally
 pulses `digital0` on GPIO38 for 50 ms with `M64 P0` and `M65 P0`. The focus axis Z remains fixed during an XY

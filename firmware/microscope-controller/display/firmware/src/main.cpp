@@ -35,10 +35,6 @@ constexpr int16_t dpadOffset = 64;
 constexpr int16_t axisSliderLeft = 76;
 constexpr int16_t axisSliderRight = 460;
 constexpr int16_t axisSliderY = 286;
-constexpr int16_t cameraButtonX = 222;
-constexpr int16_t cameraButtonY = 8;
-constexpr int16_t cameraButtonWidth = 88;
-constexpr int16_t cameraButtonHeight = 34;
 constexpr float deadzone = 0.12F;
 constexpr int minFeed = 30;
 constexpr int maxFeedLimit = 300;
@@ -48,8 +44,6 @@ constexpr uint32_t statusRequestIntervalMs = 250;
 constexpr uint32_t statusTimeoutMs = 1000;
 constexpr uint32_t jogIntervalMs = 110;
 constexpr uint32_t jogHorizonMs = 190;
-constexpr uint32_t cameraTestPulseMs = 50;
-constexpr uint32_t cameraTouchReleaseDebounceMs = 80;
 constexpr float axisJogDistance = 1000.0F;
 constexpr uint8_t jogCancel = 0x85;
 
@@ -84,8 +78,8 @@ struct PadState {
     bool active = false;
 };
 
-enum class Page { Pad, Axes, Scan };
-enum class TouchMode { None, Pad, Speed, AxisSpeed, AxisJog, CameraTrigger, Navigation };
+enum class Page { Pad, Axes, Scan, Settings };
+enum class TouchMode { None, Pad, Speed, AxisSpeed, AxisJog, Navigation };
 enum class AxisDirection { None, XNeg, XPos, YNeg, YPos, ZNeg, ZPos, ANeg, APos };
 enum class MachineState { Unknown, Idle, Jog, Moving, Blocked };
 enum class ConnectionState { Offline, Ready, Blocked };
@@ -100,10 +94,6 @@ uint32_t lastStatusRequestAt = 0;
 uint32_t lastJogAt = 0;
 bool receivedStatus = false;
 bool jogCommandActive = false;
-bool cameraTestActive = false;
-bool cameraTestArmed = true;
-uint32_t cameraTestStartedAt = 0;
-uint32_t lastTouchAt = 0;
 float workPositionX = 0.0F;
 float workPositionY = 0.0F;
 float workOffsetX = 0.0F;
@@ -113,7 +103,11 @@ char statusFrame[160];
 size_t statusFrameLength = 0;
 bool receivingStatusFrame = false;
 
-void drawCameraTestButton();
+void drawUiText(const String& value, int16_t x, int16_t y, bool large = false) {
+    display.setFreeFont(large ? &FreeSans12pt7b : &FreeSans9pt7b);
+    display.drawString(value, x, y);
+    display.setTextFont(1);
+}
 
 bool readTouch(TouchPoint& point) {
     Wire.beginTransmission(touchAddress);
@@ -138,28 +132,30 @@ bool readTouch(TouchPoint& point) {
 
 void drawMenuIcon(int16_t centerX, int16_t centerY, uint16_t color) {
     for (int offset = -7; offset <= 7; offset += 7) {
-        display.drawFastHLine(centerX - 9, centerY + offset, 18, color);
+        display.fillRect(centerX - 10, centerY + offset - 1, 20, 3, color);
     }
 }
 
 void drawControlIcon(int16_t centerX, int16_t centerY, uint16_t color) {
     display.drawCircle(centerX, centerY, 9, color);
-    display.drawFastHLine(centerX - 13, centerY, 26, color);
-    display.drawFastVLine(centerX, centerY - 13, 26, color);
-    display.fillCircle(centerX, centerY, 2, color);
+    display.drawCircle(centerX, centerY, 10, color);
+    display.fillRect(centerX - 13, centerY - 1, 26, 3, color);
+    display.fillRect(centerX - 1, centerY - 13, 3, 26, color);
+    display.fillCircle(centerX, centerY, 3, color);
 }
 
 void drawScanIcon(int16_t centerX, int16_t centerY, uint16_t color) {
     for (int row = 0; row < 2; ++row) {
         for (int column = 0; column < 2; ++column) {
             display.drawRect(centerX - 10 + column * 12, centerY - 10 + row * 12, 8, 8, color);
+            display.drawRect(centerX - 9 + column * 12, centerY - 9 + row * 12, 6, 6, color);
         }
     }
 }
 
 void drawAxesIcon(int16_t centerX, int16_t centerY, uint16_t color) {
-    display.drawFastHLine(centerX - 11, centerY, 22, color);
-    display.drawFastVLine(centerX, centerY - 11, 22, color);
+    display.fillRect(centerX - 11, centerY - 1, 22, 3, color);
+    display.fillRect(centerX - 1, centerY - 11, 3, 22, color);
     display.fillTriangle(centerX - 12, centerY, centerX - 6, centerY - 4, centerX - 6, centerY + 4, color);
     display.fillTriangle(centerX + 12, centerY, centerX + 6, centerY - 4, centerX + 6, centerY + 4, color);
     display.fillTriangle(centerX, centerY - 12, centerX - 4, centerY - 6, centerX + 4, centerY - 6, color);
@@ -167,9 +163,9 @@ void drawAxesIcon(int16_t centerX, int16_t centerY, uint16_t color) {
 }
 
 void drawSettingsIcon(int16_t centerX, int16_t centerY, uint16_t color) {
-    display.drawFastHLine(centerX - 11, centerY - 7, 22, color);
-    display.drawFastHLine(centerX - 11, centerY, 22, color);
-    display.drawFastHLine(centerX - 11, centerY + 7, 22, color);
+    display.fillRect(centerX - 11, centerY - 8, 22, 3, color);
+    display.fillRect(centerX - 11, centerY - 1, 22, 3, color);
+    display.fillRect(centerX - 11, centerY + 6, 22, 3, color);
     display.fillCircle(centerX - 4, centerY - 7, 3, colorSurface);
     display.drawCircle(centerX - 4, centerY - 7, 3, color);
     display.fillCircle(centerX + 5, centerY, 3, colorSurface);
@@ -181,19 +177,21 @@ void drawSettingsIcon(int16_t centerX, int16_t centerY, uint16_t color) {
 void drawRailButton(int16_t y, bool selected, void (*drawIcon)(int16_t, int16_t, uint16_t)) {
     if (selected) {
         display.fillRoundRect(7, y, 38, 38, 4, colorRaised);
-        display.fillRect(0, y + 7, 3, 24, colorCyan);
+        display.drawRoundRect(7, y, 38, 38, 4, colorCyan);
+        display.drawRoundRect(8, y + 1, 36, 36, 3, colorCyan);
+        display.fillRect(0, y + 6, 5, 26, colorCyan);
     }
     drawIcon(26, y + 19, selected ? colorCyan : colorMuted);
 }
 
 void drawRail() {
     display.fillRect(0, 0, railWidth, 320, colorSurface);
-    display.drawFastVLine(railWidth - 1, 0, 320, colorLine);
+    display.fillRect(railWidth - 2, 0, 2, 320, colorLine);
     drawRailButton(8, false, drawMenuIcon);
     drawRailButton(68, currentPage == Page::Pad, drawControlIcon);
     drawRailButton(120, currentPage == Page::Axes, drawAxesIcon);
     drawRailButton(172, currentPage == Page::Scan, drawScanIcon);
-    drawRailButton(274, false, drawSettingsIcon);
+    drawRailButton(274, currentPage == Page::Settings, drawSettingsIcon);
 }
 
 ConnectionState connectionState() {
@@ -218,17 +216,19 @@ void drawConnectionIndicator(bool force = false) {
     display.fillCircle(26, 258, 6, colorSurface);
     display.fillCircle(26, 258, 4, state == ConnectionState::Ready ? readyGreen : color);
     drawnConnectionState = state;
-    if (currentPage == Page::Axes) {
-        drawCameraTestButton();
-    }
 }
 
 void drawPadGrid() {
     for (int index = 1; index < 10; ++index) {
         const int16_t offset = index * padSize / 10;
         const uint16_t lineColor = index == 5 ? colorMuted : colorLine;
-        display.drawFastVLine(padX + offset, padY + 1, padSize - 2, lineColor);
-        display.drawFastHLine(padX + 1, padY + offset, padSize - 2, lineColor);
+        if (index == 5) {
+            display.fillRect(padX + offset - 1, padY + 1, 2, padSize - 2, lineColor);
+            display.fillRect(padX + 1, padY + offset - 1, padSize - 2, 2, lineColor);
+        } else {
+            display.drawFastVLine(padX + offset, padY + 1, padSize - 2, lineColor);
+            display.drawFastHLine(padX + 1, padY + offset, padSize - 2, lineColor);
+        }
     }
     display.drawCircle(padCenterX, padCenterY, static_cast<int16_t>(padSize * deadzone), colorMuted);
     display.fillCircle(padCenterX, padCenterY, 2, colorMuted);
@@ -237,13 +237,14 @@ void drawPadGrid() {
 void drawPadFrame() {
     display.fillRoundRect(padX, padY, padSize, padSize, 5, colorPad);
     display.drawRoundRect(padX, padY, padSize, padSize, 5, colorLine);
+    display.drawRoundRect(padX + 1, padY + 1, padSize - 2, padSize - 2, 4, colorLine);
     drawPadGrid();
 
     display.setTextColor(colorMuted, colorPad);
     display.setTextDatum(TC_DATUM);
-    display.drawString("Y+", padCenterX, padY + 8, 1);
+    drawUiText("Y+", padCenterX, padY + 8);
     display.setTextDatum(MR_DATUM);
-    display.drawString("X+", padX + padSize - 8, padCenterY, 1);
+    drawUiText("X+", padX + padSize - 8, padCenterY);
 }
 
 void drawHandle() {
@@ -263,22 +264,22 @@ void eraseDynamicPad() {
 
 void drawSpeedSlider() {
     display.fillRect(sliderPanelX, 0, 108, 320, colorSurface);
-    display.drawFastVLine(sliderPanelX, 0, 320, colorLine);
+    display.fillRect(sliderPanelX, 0, 2, 320, colorLine);
 
     display.setTextDatum(TC_DATUM);
     display.setTextColor(colorText, colorSurface);
-    display.drawString("TEMPO", sliderCenterX, 14, 2);
+    drawUiText("TEMPO", sliderCenterX, 14, true);
     display.setTextColor(colorMuted, colorSurface);
-    display.drawNumber(maxFeedLimit, sliderCenterX, sliderTop - 16, 1);
-    display.drawNumber(minFeed, sliderCenterX, sliderBottom + 13, 1);
+    drawUiText(String(maxFeedLimit), sliderCenterX, sliderTop - 18);
+    drawUiText(String(minFeed), sliderCenterX, sliderBottom + 10);
 
     display.fillRoundRect(sliderCenterX - 3, sliderTop, 6, sliderBottom - sliderTop, 3, colorLine);
     const int16_t knobY = map(maxFeed, minFeed, maxFeedLimit, sliderBottom, sliderTop);
     display.fillRoundRect(sliderCenterX - 3, knobY, 6, sliderBottom - knobY, 3, colorCyan);
     for (int index = 0; index <= 6; ++index) {
         const int16_t y = sliderTop + index * (sliderBottom - sliderTop) / 6;
-        display.drawFastHLine(sliderCenterX - 16, y, 7, colorMuted);
-        display.drawFastHLine(sliderCenterX + 10, y, 7, colorMuted);
+        display.fillRect(sliderCenterX - 18, y - 1, 9, 3, colorMuted);
+        display.fillRect(sliderCenterX + 10, y - 1, 9, 3, colorMuted);
     }
     display.fillCircle(sliderCenterX, knobY, 14, colorRaised);
     display.drawCircle(sliderCenterX, knobY, 14, colorText);
@@ -287,9 +288,9 @@ void drawSpeedSlider() {
     display.fillRect(sliderPanelX + 8, 278, 92, 34, colorSurface);
     display.setTextDatum(TC_DATUM);
     display.setTextColor(colorText, colorSurface);
-    display.drawNumber(maxFeed, sliderCenterX, 278, 2);
+    drawUiText(String(maxFeed), sliderCenterX, 278, true);
     display.setTextColor(colorMuted, colorSurface);
-    display.drawString("mm/min", sliderCenterX, 298, 1);
+    drawUiText("mm/min", sliderCenterX, 296);
 }
 
 void drawArrowButton(int16_t centerX, int16_t centerY, int8_t dx, int8_t dy, bool pressed = false) {
@@ -298,6 +299,7 @@ void drawArrowButton(int16_t centerX, int16_t centerY, int8_t dx, int8_t dy, boo
     const uint16_t arrow = pressed ? colorText : colorCyan;
     display.fillRoundRect(centerX - half, centerY - half, dpadButtonSize, dpadButtonSize, 5, fill);
     display.drawRoundRect(centerX - half, centerY - half, dpadButtonSize, dpadButtonSize, 5, pressed ? colorCyan : colorLine);
+    display.drawRoundRect(centerX - half + 1, centerY - half + 1, dpadButtonSize - 2, dpadButtonSize - 2, 4, pressed ? colorCyan : colorLine);
 
     if (dx < 0) {
         display.fillTriangle(centerX - 11, centerY, centerX + 7, centerY - 11, centerX + 7, centerY + 11, arrow);
@@ -313,10 +315,10 @@ void drawArrowButton(int16_t centerX, int16_t centerY, int8_t dx, int8_t dy, boo
 void drawDpad(int16_t centerX, const char* title, const char* horizontalAxis, const char* verticalAxis) {
     display.setTextDatum(TC_DATUM);
     display.setTextColor(colorText, colorBackground);
-    display.drawString(title, centerX, 12, 2);
+    drawUiText(title, centerX, 12, true);
     display.setTextColor(colorMuted, colorBackground);
-    display.drawString(horizontalAxis, centerX, 34, 1);
-    display.drawString(verticalAxis, centerX + 25, dpadCenterY - 3, 1);
+    drawUiText(horizontalAxis, centerX, 34);
+    drawUiText(verticalAxis, centerX + 25, dpadCenterY - 6);
 
     drawArrowButton(centerX - dpadOffset, dpadCenterY, -1, 0);
     drawArrowButton(centerX + dpadOffset, dpadCenterY, 1, 0);
@@ -325,53 +327,38 @@ void drawDpad(int16_t centerX, const char* title, const char* horizontalAxis, co
 
     display.fillCircle(centerX, dpadCenterY, 24, colorPad);
     display.drawCircle(centerX, dpadCenterY, 24, colorLine);
+    display.drawCircle(centerX, dpadCenterY, 23, colorLine);
     display.setTextDatum(MC_DATUM);
     display.setTextColor(colorText, colorPad);
-    display.drawString(title, centerX, dpadCenterY, 2);
+    drawUiText(title, centerX, dpadCenterY, true);
 }
 
 void drawAxisSpeedControl() {
     display.fillRect(railWidth, 250, 480 - railWidth, 70, colorBackground);
     const int16_t handleX = map(axisFeed, axisPageMinFeed, axisPageMaxFeed, axisSliderLeft, axisSliderRight);
-    display.fillRoundRect(axisSliderLeft, axisSliderY - 3, axisSliderRight - axisSliderLeft, 6, 3, colorLine);
+    display.fillRoundRect(axisSliderLeft, axisSliderY - 5, axisSliderRight - axisSliderLeft, 10, 5, colorLine);
     if (handleX > axisSliderLeft) {
-        display.fillRoundRect(axisSliderLeft, axisSliderY - 3, handleX - axisSliderLeft, 6, 3, colorCyan);
+        display.fillRoundRect(axisSliderLeft, axisSliderY - 5, handleX - axisSliderLeft, 10, 5, colorCyan);
     }
     display.fillCircle(handleX, axisSliderY, 11, colorCyan);
     display.fillCircle(handleX, axisSliderY, 5, colorText);
 
     display.setTextDatum(TC_DATUM);
     display.setTextColor(colorText, colorBackground);
-    display.drawNumber(axisFeed, (axisSliderLeft + axisSliderRight) / 2, 252, 2);
+    drawUiText(String(axisFeed), (axisSliderLeft + axisSliderRight) / 2, 252, true);
     display.setTextColor(colorMuted, colorBackground);
-    display.drawString("mm/min", (axisSliderLeft + axisSliderRight) / 2, 270, 1);
+    drawUiText("mm/min", (axisSliderLeft + axisSliderRight) / 2, 268);
     display.setTextDatum(TL_DATUM);
-    display.drawNumber(axisPageMinFeed, axisSliderLeft, 302, 1);
+    drawUiText(String(axisPageMinFeed), axisSliderLeft, 300);
     display.setTextDatum(TR_DATUM);
-    display.drawNumber(axisPageMaxFeed, axisSliderRight, 302, 1);
-}
-
-void drawCameraTestButton() {
-    const bool enabled = connectionState() == ConnectionState::Ready;
-    const uint16_t fill = cameraTestActive ? colorCyanDark : colorRaised;
-    const uint16_t border = cameraTestActive ? colorCyan : colorLine;
-    const uint16_t label = enabled ? (cameraTestActive ? colorText : colorCyan) : colorMuted;
-    display.fillRoundRect(cameraButtonX, cameraButtonY, cameraButtonWidth, cameraButtonHeight, 4, fill);
-    display.drawRoundRect(cameraButtonX, cameraButtonY, cameraButtonWidth, cameraButtonHeight, 4, border);
-    display.setTextDatum(MC_DATUM);
-    display.setTextColor(label, fill);
-    display.drawString(cameraTestActive ? "TRIGGER" : "CAM TEST",
-                       cameraButtonX + cameraButtonWidth / 2,
-                       cameraButtonY + cameraButtonHeight / 2,
-                       1);
+    drawUiText(String(axisPageMaxFeed), axisSliderRight, 300);
 }
 
 void drawAxesPage() {
     display.fillRect(railWidth, 0, 480 - railWidth, 320, colorBackground);
-    display.drawFastVLine(266, 48, 202, colorLine);
+    display.fillRect(265, 48, 2, 202, colorLine);
     drawDpad(dpadLeftCenterX, "XY", "X", "Y");
     drawDpad(dpadRightCenterX, "ZA", "Z", "A");
-    drawCameraTestButton();
     drawAxisSpeedControl();
 }
 
@@ -406,36 +393,6 @@ void releasePad() {
 void cancelJog() {
     controllerSerial.write(jogCancel);
     jogCommandActive = false;
-}
-
-void sendControllerLine(const char* line) {
-    controllerSerial.print(line);
-    controllerSerial.write('\r');
-    controllerSerial.flush();
-}
-
-void startCameraTest() {
-    if (!cameraTestArmed || cameraTestActive || connectionState() != ConnectionState::Ready) {
-        return;
-    }
-    sendControllerLine("M64 P0");
-    cameraTestArmed = false;
-    cameraTestActive = true;
-    cameraTestStartedAt = millis();
-    if (currentPage == Page::Axes) {
-        drawCameraTestButton();
-    }
-}
-
-void finishCameraTest() {
-    if (!cameraTestActive) {
-        return;
-    }
-    sendControllerLine("M65 P0");
-    cameraTestActive = false;
-    if (currentPage == Page::Axes) {
-        drawCameraTestButton();
-    }
 }
 
 bool axisDirectionCommand(AxisDirection direction, char& axis, float& sign) {
@@ -585,9 +542,6 @@ void serviceController() {
     if (padState.active && now - lastJogAt >= jogIntervalMs) {
         sendJogSegment();
     }
-    if (cameraTestActive && now - cameraTestStartedAt >= cameraTestPulseMs) {
-        finishCameraTest();
-    }
     scanUi.service(scanMachineStatus());
     drawConnectionIndicator();
 }
@@ -643,13 +597,12 @@ bool insideScanPageButton(int16_t x, int16_t y) {
     return x >= 5 && x <= 47 && y >= 168 && y <= 218;
 }
 
-bool insideAxisSpeedSlider(int16_t x, int16_t y) {
-    return x >= axisSliderLeft - 12 && x <= axisSliderRight + 12 && y >= 258 && y <= 319;
+bool insideSettingsPageButton(int16_t x, int16_t y) {
+    return x >= 5 && x <= 47 && y >= 270 && y <= 319;
 }
 
-bool insideCameraTestButton(int16_t x, int16_t y) {
-    return x >= cameraButtonX && x <= cameraButtonX + cameraButtonWidth &&
-        y >= cameraButtonY && y <= cameraButtonY + cameraButtonHeight;
+bool insideAxisSpeedSlider(int16_t x, int16_t y) {
+    return x >= axisSliderLeft - 12 && x <= axisSliderRight + 12 && y >= 258 && y <= 319;
 }
 
 void updateSpeed(int16_t screenY) {
@@ -679,6 +632,7 @@ void showPage(Page page) {
     if (jogCommandActive) {
         cancelJog();
     }
+    scanUi.cancelInteraction();
     padState = PadState{};
     activeAxisDirection = AxisDirection::None;
     currentPage = page;
@@ -687,8 +641,10 @@ void showPage(Page page) {
         drawPadPage();
     } else if (currentPage == Page::Axes) {
         drawAxesPage();
+    } else if (currentPage == Page::Scan) {
+        scanUi.showWorkflow();
     } else {
-        scanUi.draw();
+        scanUi.showSettings();
     }
     drawConnectionIndicator(true);
 }
@@ -700,18 +656,18 @@ void updateAxisSpeed(int16_t screenX) {
 }
 
 void initializeColors() {
-    colorBackground = display.color565(17, 19, 21);
-    colorSurface = display.color565(27, 30, 33);
-    colorRaised = display.color565(40, 45, 49);
-    colorPad = display.color565(32, 36, 40);
-    colorLine = display.color565(56, 62, 67);
-    colorMuted = display.color565(155, 164, 170);
-    colorText = display.color565(242, 244, 245);
-    colorCyan = display.color565(112, 199, 220);
-    colorCyanDark = display.color565(39, 79, 89);
-    colorGreen = display.color565(74, 181, 126);
-    colorAmber = display.color565(224, 169, 70);
-    colorRed = display.color565(211, 82, 82);
+    colorBackground = display.color565(4, 6, 8);
+    colorSurface = display.color565(22, 27, 31);
+    colorRaised = display.color565(55, 65, 72);
+    colorPad = display.color565(20, 27, 32);
+    colorLine = display.color565(105, 119, 128);
+    colorMuted = display.color565(205, 215, 220);
+    colorText = display.color565(255, 255, 255);
+    colorCyan = display.color565(96, 226, 255);
+    colorCyanDark = display.color565(23, 100, 119);
+    colorGreen = display.color565(79, 229, 145);
+    colorAmber = display.color565(255, 192, 72);
+    colorRed = display.color565(255, 91, 91);
 }
 
 void drawApp() {
@@ -723,8 +679,10 @@ void drawApp() {
         drawPadPage();
     } else if (currentPage == Page::Axes) {
         drawAxesPage();
+    } else if (currentPage == Page::Scan) {
+        scanUi.showWorkflow();
     } else {
-        scanUi.draw();
+        scanUi.showSettings();
     }
     drawConnectionIndicator(true);
 }
@@ -751,16 +709,10 @@ void loop() {
     static TouchMode touchMode = TouchMode::None;
     TouchPoint point{};
     const bool touched = readTouch(point);
-    const uint32_t now = millis();
-    if (touched) {
-        lastTouchAt = now;
-    } else if (!cameraTestArmed && now - lastTouchAt >= cameraTouchReleaseDebounceMs) {
-        cameraTestArmed = true;
-    }
     const int16_t screenX = static_cast<int16_t>(point.y);
     const int16_t screenY = static_cast<int16_t>(320 - point.x);
 
-    if (currentPage == Page::Scan) {
+    if (currentPage == Page::Scan || currentPage == Page::Settings) {
         bool navigationTouch = false;
         if (touched && touchMode == TouchMode::None) {
             if (insidePadPageButton(screenX, screenY)) {
@@ -772,11 +724,16 @@ void loop() {
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
             } else if (insideScanPageButton(screenX, screenY)) {
+                showPage(Page::Scan);
+                touchMode = TouchMode::Navigation;
+                navigationTouch = true;
+            } else if (insideSettingsPageButton(screenX, screenY)) {
+                showPage(Page::Settings);
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
             }
         }
-        if (currentPage == Page::Scan && !navigationTouch && touchMode == TouchMode::None) {
+        if ((currentPage == Page::Scan || currentPage == Page::Settings) && !navigationTouch && touchMode == TouchMode::None) {
             scanUi.handleTouch(touched, screenX, screenY, scanMachineStatus());
         } else if (!touched && touchMode == TouchMode::Navigation) {
             touchMode = TouchMode::None;
@@ -797,6 +754,9 @@ void loop() {
             } else if (insideScanPageButton(screenX, screenY)) {
                 showPage(Page::Scan);
                 touchMode = TouchMode::Navigation;
+            } else if (insideSettingsPageButton(screenX, screenY)) {
+                showPage(Page::Settings);
+                touchMode = TouchMode::Navigation;
             } else if (currentPage == Page::Pad) {
                 if (insidePad(screenX, screenY)) {
                     touchMode = TouchMode::Pad;
@@ -804,12 +764,7 @@ void loop() {
                     touchMode = TouchMode::Speed;
                 }
             } else {
-                if (insideCameraTestButton(screenX, screenY)) {
-                    touchMode = TouchMode::CameraTrigger;
-                    startCameraTest();
-                } else {
-                    activeAxisDirection = axisDirectionAt(screenX, screenY);
-                }
+                activeAxisDirection = axisDirectionAt(screenX, screenY);
                 if (touchMode == TouchMode::None && activeAxisDirection != AxisDirection::None) {
                     touchMode = TouchMode::AxisJog;
                     drawAxisDirection(activeAxisDirection, true);

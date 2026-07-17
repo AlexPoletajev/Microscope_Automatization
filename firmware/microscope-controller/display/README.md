@@ -47,11 +47,13 @@ the mainboard UART output and CH340 output remain electrically connected to the 
 4. Build a minimal LVGL hardware test with display, touch and UART only.
 5. Add microscope views using the command contract in `protocol/stage-control.md`.
 
-The display UI provides a full-screen XY pad, separate XY/ZA jog controls and a three-step scan workspace. Frame
-and corner measurements use FluidNC work positions, while frame size, camera resolution, scan corners, overlap,
-speed, settling time and trigger duration are persisted in display NVS. The scan executor follows an
-endpoint-inclusive serpentine path and provides progress, pause-at-next-frame and cancel controls. It must not
-contain independent machine position state; all positions and motion states come from FluidNC.
+The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a scan workflow and large settings
+pages. The calibrated field size, camera resolution, overlap, speed, settling time, camera enable state and return
+behavior are persisted in display NVS. Scan start and end positions deliberately live only for the current display
+session and are cleared by a restart. The scan executor follows an endpoint-inclusive serpentine XY path, keeps Z
+unchanged and provides progress, pause-at-next-frame and cancel controls. Each enabled camera capture pulses IO38
+for a fixed 50 ms. It must not contain independent machine position state; all positions and motion states come
+from FluidNC.
 
 The vendor firmware sends realtime `?` followed by proprietary byte `0xE1` and searches for the identity string
 `Grbl_ESP32`. The mainboard startup macro sends that compatibility identity after UART initialization. FluidNC
