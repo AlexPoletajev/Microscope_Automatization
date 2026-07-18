@@ -63,8 +63,9 @@ The slip test captures two session-only XYZ points, including the focus Z positi
 A first and then performs the configured number of A-B-A rounds at the saved test speed, always ending at point A.
 Test speed and round count persist in display NVS; stopping the test aborts active motion.
 
-All touch-and-hold jog controls use bounded motion segments. On touch release, the display repeats the realtime jog
-cancel command until FluidNC reports `Idle`, covering the XY pad, the XY/ZA arrows and field-calibration arrows.
+All touch-and-hold jog controls continuously repeat bounded motion segments while pressed. On touch release, the
+display repeats the realtime jog cancel command until FluidNC reports `Idle`, covering the XY pad, the XY/ZA arrows
+and field-calibration arrows.
 
 The vendor firmware sends realtime `?` followed by proprietary byte `0xE1` and searches for the identity string
 `Grbl_ESP32`. The mainboard startup macro sends that compatibility identity after UART initialization. FluidNC

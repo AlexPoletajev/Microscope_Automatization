@@ -582,6 +582,8 @@ void serviceController() {
     }
     if (padState.active && now - lastJogAt >= jogIntervalMs) {
         sendJogSegment();
+    } else if (activeAxisDirection != AxisDirection::None && now - lastJogAt >= jogIntervalMs) {
+        sendAxisJogSegment();
     }
     scanUi.service(scanMachineStatus());
     slipTestUi.service(scanMachineStatus());
