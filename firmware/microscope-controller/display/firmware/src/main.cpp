@@ -353,7 +353,7 @@ void drawAxisSpeedControl() {
     display.setTextColor(colorText, colorBackground);
     drawUiText(String(axisFeed), (axisSliderLeft + axisSliderRight) / 2, 252, true);
     display.setTextColor(colorMuted, colorBackground);
-    drawUiText("mm/min", (axisSliderLeft + axisSliderRight) / 2, 268);
+    drawUiText("XY/A mm/min  |  Z x10", (axisSliderLeft + axisSliderRight) / 2, 268);
     display.setTextDatum(TL_DATUM);
     drawUiText(String(axisPageMinFeed), axisSliderLeft, 300);
     display.setTextDatum(TR_DATUM);
@@ -426,7 +426,7 @@ void sendAxisJogSegment() {
         return;
     }
 
-    const float feed = static_cast<float>(axisFeed);
+    const float feed = static_cast<float>(axisFeed) * (axis == 'Z' ? 10.0F : 1.0F);
     String command;
     command.reserve(48);
     command = F("$J=G91 G21 ");

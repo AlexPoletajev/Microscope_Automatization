@@ -28,7 +28,7 @@ public:
     bool running() const;
 
 private:
-    enum class Screen { Workflow, SettingsMenu, FieldMenu, CalibrateX, CalibrateY, CalibrateZ, Parameter, Camera, Resolution };
+    enum class Screen { Workflow, SettingsMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
     enum class Parameter { Overlap, Speed, Settle, FocusSteps };
     enum class TouchAction { None, Jog, Slider };
     enum class JogDirection { None, Negative, Positive };
@@ -37,7 +37,6 @@ private:
     struct Profile {
         float frameX = 0.0F;
         float frameY = 0.0F;
-        float frameZ = 0.0F;
         int cameraWidth = 1920;
         int cameraHeight = 1080;
         int overlap = 15;
@@ -46,7 +45,6 @@ private:
         int focusSteps = 1;
         bool frameXSet = false;
         bool frameYSet = false;
-        bool frameZSet = false;
         bool cameraEnabled = false;
         bool returnToStart = true;
     };
@@ -73,10 +71,14 @@ private:
     bool calibrationASet_ = false;
     bool sessionStartSet_ = false;
     bool sessionEndSet_ = false;
+    bool sessionFocusStartSet_ = false;
+    bool sessionFocusEndSet_ = false;
     float sessionStartX_ = 0.0F;
     float sessionStartY_ = 0.0F;
     float sessionEndX_ = 0.0F;
     float sessionEndY_ = 0.0F;
+    float sessionFocusStartZ_ = 0.0F;
+    float sessionFocusEndZ_ = 0.0F;
     int columns_ = 0;
     int rows_ = 0;
     int currentIndex_ = 0;

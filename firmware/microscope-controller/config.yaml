@@ -65,7 +65,7 @@ axes:
 
   z:
     steps_per_mm: 80.000
-    max_rate_mm_per_min: 240.000
+    max_rate_mm_per_min: 2400.000
     acceleration_mm_per_sec2: 10.000
     max_travel_mm: 80.000
     soft_limits: false

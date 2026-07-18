@@ -38,11 +38,12 @@ recovery action and does not replace a power-cutting emergency stop.
 
 ## Display scan sequence
 
-The display stores frame calibration and scan parameters in its own NVS. The two scan endpoints are session-only
-and are intentionally discarded on display restart. It derives an
+The display stores XY frame calibration and scan parameters in its own NVS. The XY scan endpoints and optional Z
+focus endpoints are session-only and are intentionally discarded on display restart. It derives an
 endpoint-inclusive serpentine grid from the calibrated frame span and requested overlap. For each image it sends
 one absolute XY move, waits for FluidNC to report `Idle`, applies the configured settling delay and optionally
 pulses `digital0` on GPIO38 for 50 ms with `M64 P0` and `M65 P0`. An optional focus stack distributes the configured
-number of Z positions evenly across the calibrated focus span around the Z position present at scan start. No later
+number of Z positions evenly from the session Z start through the session Z end position. With one focus step, Z
+remains at the position present at scan start. No later
 grid move is queued before the current image is complete, and cancellation explicitly releases the
 camera output before resetting motion.
