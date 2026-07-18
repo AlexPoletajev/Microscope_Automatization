@@ -7,6 +7,7 @@ namespace {
 constexpr int16_t left = 52;
 constexpr int16_t sliderLeft = 145;
 constexpr int16_t sliderRight = 386;
+constexpr int scanMaxSpeed = 180;
 constexpr uint32_t cameraPulseMs = 50;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
@@ -66,7 +67,7 @@ void ScanUi::loadProfile() {
     profile_.cameraWidth = p.getInt("camW", 1920);
     profile_.cameraHeight = p.getInt("camH", 1080);
     profile_.overlap = constrain(p.getInt("overlap", 15), 0, 80);
-    profile_.speed = constrain(p.getInt("speed", 60), 1, 90);
+    profile_.speed = constrain(p.getInt("speed", 60), 1, scanMaxSpeed);
     profile_.settleMs = constrain((p.getInt("settle", 300) + 25) / 50 * 50, 0, 2000);
     profile_.frameXSet = p.getBool("frameXok", false) && profile_.frameX > 0.00001F;
     profile_.frameYSet = p.getBool("frameYok", false) && profile_.frameY > 0.00001F;
@@ -223,7 +224,7 @@ void ScanUi::drawParameterControl() {
     int value, minimum, maximum;
     String unit;
     if (parameter_ == Parameter::Overlap) { value = profile_.overlap; minimum = 0; maximum = 80; unit = "%"; }
-    else if (parameter_ == Parameter::Speed) { value = profile_.speed; minimum = 1; maximum = 90; unit = " mm/min"; }
+    else if (parameter_ == Parameter::Speed) { value = profile_.speed; minimum = 1; maximum = scanMaxSpeed; unit = " mm/min"; }
     else { value = profile_.settleMs; minimum = 0; maximum = 2000; unit = " ms"; }
     display_.setTextDatum(MC_DATUM); display_.setTextColor(text, background);
     drawUiText(display_, String(value) + unit, 266, 92, true);
@@ -318,7 +319,7 @@ void ScanUi::updateParameterFromX(int16_t x) {
     const int previous = parameter_ == Parameter::Overlap ? profile_.overlap :
         (parameter_ == Parameter::Speed ? profile_.speed : profile_.settleMs);
     if (parameter_ == Parameter::Overlap) profile_.overlap = map(x, sliderLeft, sliderRight, 0, 80);
-    else if (parameter_ == Parameter::Speed) profile_.speed = map(x, sliderLeft, sliderRight, 1, 90);
+    else if (parameter_ == Parameter::Speed) profile_.speed = map(x, sliderLeft, sliderRight, 1, scanMaxSpeed);
     else profile_.settleMs = map(x, sliderLeft, sliderRight, 0, 40) * 50;
     const int current = parameter_ == Parameter::Overlap ? profile_.overlap :
         (parameter_ == Parameter::Speed ? profile_.speed : profile_.settleMs);
@@ -329,7 +330,7 @@ void ScanUi::updateParameterFromX(int16_t x) {
 
 void ScanUi::changeParameter(int delta) {
     if (parameter_ == Parameter::Overlap) profile_.overlap = constrain(profile_.overlap + delta, 0, 80);
-    else if (parameter_ == Parameter::Speed) profile_.speed = constrain(profile_.speed + delta, 1, 90);
+    else if (parameter_ == Parameter::Speed) profile_.speed = constrain(profile_.speed + delta, 1, scanMaxSpeed);
     else profile_.settleMs = constrain(profile_.settleMs + delta * 50, 0, 2000);
     calculateGrid(); saveProfile(); redraw();
 }
