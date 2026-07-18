@@ -3,6 +3,7 @@
 #include <Wire.h>
 
 #include "scan_ui.h"
+#include "slip_test_ui.h"
 
 #include <cmath>
 #include <cstring>
@@ -11,6 +12,7 @@ namespace {
 TFT_eSPI display;
 HardwareSerial controllerSerial(2);
 ScanUi scanUi(display, controllerSerial);
+SlipTestUi slipTestUi(display, controllerSerial);
 
 constexpr int touchSda = 0;
 constexpr int touchScl = 4;
@@ -79,7 +81,7 @@ struct PadState {
     bool active = false;
 };
 
-enum class Page { Pad, Axes, Scan, Settings };
+enum class Page { Pad, Axes, Scan, SlipTest, Settings };
 enum class TouchMode { None, Pad, Speed, AxisSpeed, AxisJog, Navigation };
 enum class AxisDirection { None, XNeg, XPos, YNeg, YPos, ZNeg, ZPos, ANeg, APos };
 enum class MachineState { Unknown, Idle, Jog, Moving, Blocked };
@@ -180,6 +182,13 @@ void drawSettingsIcon(int16_t centerX, int16_t centerY, uint16_t color) {
     display.drawCircle(centerX - 1, centerY + 7, 3, color);
 }
 
+void drawSlipTestIcon(int16_t centerX, int16_t centerY, uint16_t color) {
+    display.fillRect(centerX - 9, centerY - 7, 18, 3, color);
+    display.fillTriangle(centerX - 12, centerY - 6, centerX - 5, centerY - 11, centerX - 5, centerY - 1, color);
+    display.fillRect(centerX - 9, centerY + 5, 18, 3, color);
+    display.fillTriangle(centerX + 12, centerY + 6, centerX + 5, centerY + 1, centerX + 5, centerY + 11, color);
+}
+
 void drawRailButton(int16_t y, bool selected, void (*drawIcon)(int16_t, int16_t, uint16_t)) {
     if (selected) {
         display.fillRoundRect(7, y, 38, 38, 4, colorRaised);
@@ -197,6 +206,7 @@ void drawRail() {
     drawRailButton(68, currentPage == Page::Pad, drawControlIcon);
     drawRailButton(120, currentPage == Page::Axes, drawAxesIcon);
     drawRailButton(172, currentPage == Page::Scan, drawScanIcon);
+    drawRailButton(224, currentPage == Page::SlipTest, drawSlipTestIcon);
     drawRailButton(274, currentPage == Page::Settings, drawSettingsIcon);
 }
 
@@ -219,8 +229,8 @@ void drawConnectionIndicator(bool force = false) {
         ? colorGreen
         : (state == ConnectionState::Blocked ? colorAmber : colorRed);
     constexpr uint16_t readyGreen = static_cast<uint16_t>((TFT_GREEN << 8) | (TFT_GREEN >> 8));
-    display.fillCircle(26, 258, 6, colorSurface);
-    display.fillCircle(26, 258, 4, state == ConnectionState::Ready ? readyGreen : color);
+    display.fillCircle(26, 57, 6, colorSurface);
+    display.fillCircle(26, 57, 4, state == ConnectionState::Ready ? readyGreen : color);
     drawnConnectionState = state;
 }
 
@@ -553,6 +563,7 @@ void serviceController() {
         sendJogSegment();
     }
     scanUi.service(scanMachineStatus());
+    slipTestUi.service(scanMachineStatus());
     drawConnectionIndicator();
 }
 
@@ -607,6 +618,10 @@ bool insideScanPageButton(int16_t x, int16_t y) {
     return x >= 5 && x <= 47 && y >= 168 && y <= 218;
 }
 
+bool insideSlipTestPageButton(int16_t x, int16_t y) {
+    return x >= 5 && x <= 47 && y >= 220 && y <= 266;
+}
+
 bool insideSettingsPageButton(int16_t x, int16_t y) {
     return x >= 5 && x <= 47 && y >= 270 && y <= 319;
 }
@@ -636,13 +651,14 @@ void showPage(Page page) {
     if (page == currentPage) {
         return;
     }
-    if (scanUi.running()) {
+    if (scanUi.running() || slipTestUi.running()) {
         return;
     }
     if (jogCommandActive) {
         cancelJog();
     }
     scanUi.cancelInteraction();
+    slipTestUi.cancelInteraction();
     padState = PadState{};
     activeAxisDirection = AxisDirection::None;
     currentPage = page;
@@ -653,6 +669,8 @@ void showPage(Page page) {
         drawAxesPage();
     } else if (currentPage == Page::Scan) {
         scanUi.showWorkflow();
+    } else if (currentPage == Page::SlipTest) {
+        slipTestUi.show();
     } else {
         scanUi.showSettings();
     }
@@ -707,6 +725,8 @@ void drawApp() {
         drawAxesPage();
     } else if (currentPage == Page::Scan) {
         scanUi.showWorkflow();
+    } else if (currentPage == Page::SlipTest) {
+        slipTestUi.show();
     } else {
         scanUi.showSettings();
     }
@@ -721,6 +741,7 @@ void setup() {
     digitalWrite(TFT_BL, TFT_BACKLIGHT_ON);
     display.init();
     scanUi.begin();
+    slipTestUi.begin();
     drawApp();
 
     pinMode(touchReset, OUTPUT);
@@ -738,7 +759,7 @@ void loop() {
     const int16_t screenX = static_cast<int16_t>(point.y);
     const int16_t screenY = static_cast<int16_t>(320 - point.x);
 
-    if (currentPage == Page::Scan || currentPage == Page::Settings) {
+    if (currentPage == Page::Scan || currentPage == Page::SlipTest || currentPage == Page::Settings) {
         bool navigationTouch = false;
         if (touched && touchMode == TouchMode::None) {
             if (insidePadPageButton(screenX, screenY)) {
@@ -753,14 +774,20 @@ void loop() {
                 requestPage(Page::Scan);
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
+            } else if (insideSlipTestPageButton(screenX, screenY)) {
+                requestPage(Page::SlipTest);
+                touchMode = TouchMode::Navigation;
+                navigationTouch = true;
             } else if (insideSettingsPageButton(screenX, screenY)) {
                 requestPage(Page::Settings);
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
             }
         }
-        if ((currentPage == Page::Scan || currentPage == Page::Settings) && !navigationTouch && touchMode == TouchMode::None) {
-            scanUi.handleTouch(touched, screenX, screenY, scanMachineStatus());
+        if ((currentPage == Page::Scan || currentPage == Page::SlipTest || currentPage == Page::Settings) &&
+            !navigationTouch && touchMode == TouchMode::None) {
+            if (currentPage == Page::SlipTest) slipTestUi.handleTouch(touched, screenX, screenY, scanMachineStatus());
+            else scanUi.handleTouch(touched, screenX, screenY, scanMachineStatus());
         } else if (!touched && touchMode == TouchMode::Navigation) {
             touchMode = TouchMode::None;
         }
@@ -779,6 +806,9 @@ void loop() {
                 touchMode = TouchMode::Navigation;
             } else if (insideScanPageButton(screenX, screenY)) {
                 requestPage(Page::Scan);
+                touchMode = TouchMode::Navigation;
+            } else if (insideSlipTestPageButton(screenX, screenY)) {
+                requestPage(Page::SlipTest);
                 touchMode = TouchMode::Navigation;
             } else if (insideSettingsPageButton(screenX, screenY)) {
                 requestPage(Page::Settings);

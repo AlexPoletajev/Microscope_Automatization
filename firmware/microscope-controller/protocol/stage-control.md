@@ -47,3 +47,10 @@ number of Z positions evenly from the session Z start through the session Z end 
 remains at the position present at scan start. No later
 grid move is queued before the current image is complete, and cancellation explicitly releases the
 camera output before resetting motion.
+
+## Display slip test sequence
+
+The display captures two session-only XYZ positions, so each endpoint includes its own focus Z coordinate. After
+the operator chooses a speed and round count, the test first moves to A and then sends one complete A-B-A sequence
+per round. It waits for `Idle` after every absolute XYZ move and finishes at A. Test speed and round count persist
+in display NVS. Stop aborts the active move; navigation remains locked until the test finishes or is stopped.
