@@ -46,8 +46,10 @@ constexpr uint32_t statusRequestIntervalMs = 250;
 constexpr uint32_t statusTimeoutMs = 1000;
 constexpr uint32_t jogIntervalMs = 110;
 constexpr uint32_t jogHorizonMs = 190;
+constexpr uint32_t axisJogSegmentMs = 100;
+constexpr uint32_t jogCancelRepeatMs = 50;
+constexpr uint32_t jogCancelGuardMs = 250;
 constexpr uint32_t navigationDoubleTapMs = 500;
-constexpr float axisJogDistance = 1000.0F;
 constexpr uint8_t jogCancel = 0x85;
 
 int maxFeed = 60;
@@ -100,6 +102,9 @@ uint32_t lastStatusRequestAt = 0;
 uint32_t lastJogAt = 0;
 bool receivedStatus = false;
 bool jogCommandActive = false;
+bool jogCancelPending = false;
+uint32_t lastJogCancelAt = 0;
+uint32_t jogCancelStartedAt = 0;
 float workPositionX = 0.0F;
 float workPositionY = 0.0F;
 float workPositionZ = 0.0F;
@@ -408,7 +413,10 @@ void releasePad() {
 
 void cancelJog() {
     controllerSerial.write(jogCancel);
+    controllerSerial.flush();
     jogCommandActive = false;
+    jogCancelPending = true;
+    lastJogCancelAt = jogCancelStartedAt = millis();
 }
 
 bool axisDirectionCommand(AxisDirection direction, char& axis, float& sign) {
@@ -436,12 +444,14 @@ void sendAxisJogSegment() {
         return;
     }
 
+    jogCancelPending = false;
     const float feed = static_cast<float>(axisFeed) * (axis == 'Z' ? 10.0F : 1.0F);
+    const float distance = feed * axisJogSegmentMs / 60000.0F;
     String command;
     command.reserve(48);
     command = F("$J=G91 G21 ");
     command += axis;
-    command += String(axisJogDistance * sign, 1);
+    command += String(distance * sign, 4);
     command += F(" F");
     command += String(feed, 1);
     command += '\r';
@@ -458,6 +468,7 @@ void sendJogSegment() {
         }
         return;
     }
+    jogCancelPending = false;
     const float feed = static_cast<float>(max(1, padState.speed));
     const float distance = feed * jogHorizonMs / 60000.0F;
     String command;
@@ -558,6 +569,16 @@ void serviceController() {
     if (now - lastStatusRequestAt >= statusRequestIntervalMs) {
         controllerSerial.write('?');
         lastStatusRequestAt = now;
+    }
+    if (jogCancelPending) {
+        if ((machineState == MachineState::Idle || machineState == MachineState::Blocked) &&
+            now - jogCancelStartedAt >= jogCancelGuardMs) {
+            jogCancelPending = false;
+        } else if (now - lastJogCancelAt >= jogCancelRepeatMs) {
+            controllerSerial.write(jogCancel);
+            controllerSerial.flush();
+            lastJogCancelAt = now;
+        }
     }
     if (padState.active && now - lastJogAt >= jogIntervalMs) {
         sendJogSegment();

@@ -12,6 +12,8 @@ constexpr int maxFocusSteps = 20;
 constexpr uint32_t cameraPulseMs = 50;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
+constexpr uint32_t jogCancelRepeatMs = 50;
+constexpr uint32_t jogCancelGuardMs = 250;
 
 uint16_t background, surface, raised, lineColor, muted, text, cyan, cyanDark, green, amber, red;
 
@@ -286,6 +288,7 @@ void ScanUi::openParameter(Parameter value) { parameter_ = value; screen_ = Scre
 
 void ScanUi::startJog(JogDirection direction, char axis) {
     if (!machine_.connected) return;
+    jogCancelPending_ = false;
     jogDirection_ = direction;
     jogAxis_ = axis;
     touchAction_ = TouchAction::Jog;
@@ -298,7 +301,7 @@ void ScanUi::sendJogSegment() {
     if (jogDirection_ == JogDirection::None) return;
     String command = "$J=G91 G21 ";
     command += jogAxis_;
-    command += jogDirection_ == JogDirection::Positive ? "-0.20" : "0.20";
+    command += jogDirection_ == JogDirection::Positive ? "-0.12" : "0.12";
     command += " F60\r";
     controller_.write(reinterpret_cast<const uint8_t*>(command.c_str()), command.length());
     controller_.flush();
@@ -307,7 +310,10 @@ void ScanUi::sendJogSegment() {
 
 void ScanUi::stopJog() {
     controller_.write(jogCancel);
+    controller_.flush();
     jogDirection_ = JogDirection::None;
+    jogCancelPending_ = true;
+    lastJogCancelAt_ = jogCancelStartedAt_ = millis();
 }
 
 void ScanUi::captureCalibration(const ScanMachineStatus& machine, char axis) {
@@ -442,6 +448,16 @@ void ScanUi::advanceScan() {
 void ScanUi::service(const ScanMachineStatus& machine) {
     const uint32_t now = millis();
     machine_ = machine;
+    if (jogCancelPending_) {
+        if ((machine.motion == ScanMotionState::Idle || machine.motion == ScanMotionState::Blocked) &&
+            now - jogCancelStartedAt_ >= jogCancelGuardMs) {
+            jogCancelPending_ = false;
+        } else if (machine.connected && now - lastJogCancelAt_ >= jogCancelRepeatMs) {
+            controller_.write(jogCancel);
+            controller_.flush();
+            lastJogCancelAt_ = now;
+        }
+    }
     if (touchAction_ == TouchAction::Jog && now - lastJogAt_ >= 150) sendJogSegment();
     if (cameraTestActive_ && now - phaseStartedAt_ >= cameraPulseMs) { releaseTrigger(); if (screen_ == Screen::Camera) redraw(); }
     if (phase_ == Phase::Recover) {

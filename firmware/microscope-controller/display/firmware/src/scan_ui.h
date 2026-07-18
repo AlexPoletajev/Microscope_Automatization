@@ -64,10 +64,13 @@ private:
     bool triggerOutputActive_ = false;
     bool cameraTestActive_ = false;
     bool recoveryUnlockSent_ = false;
+    bool jogCancelPending_ = false;
     bool visible_ = false;
     char jogAxis_ = 'X';
     uint32_t lastJogAt_ = 0;
     uint32_t lastRecoveryUnlockAt_ = 0;
+    uint32_t lastJogCancelAt_ = 0;
+    uint32_t jogCancelStartedAt_ = 0;
     ScanMachineStatus machine_;
     float calibrationA_ = 0.0F;
     bool calibrationASet_ = false;
