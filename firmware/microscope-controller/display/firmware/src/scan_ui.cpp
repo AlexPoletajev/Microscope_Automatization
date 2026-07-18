@@ -102,8 +102,8 @@ void ScanUi::saveProfile() {
     p.end();
 }
 
-void ScanUi::showWorkflow() { if (!running()) { visible_ = true; feedback_ = ""; screen_ = Screen::Workflow; draw(); } }
-void ScanUi::showSettings() { if (!running()) { visible_ = true; feedback_ = ""; screen_ = Screen::SettingsMenu; draw(); } }
+void ScanUi::showWorkflow() { if (!running()) { visible_ = true; screen_ = Screen::Workflow; draw(); } }
+void ScanUi::showSettings() { if (!running()) { visible_ = true; screen_ = Screen::SettingsMenu; draw(); } }
 
 void ScanUi::cancelInteraction() {
     if (touchAction_ == TouchAction::Jog) stopJog();
@@ -137,7 +137,7 @@ void ScanUi::drawButton(int16_t x, int16_t y, int16_t w, int16_t h, const String
 void ScanUi::drawWorkflow(const ScanMachineStatus* machine) {
     drawHeader("SCAN");
     const ScanMachineStatus& status = machine == nullptr ? machine_ : *machine;
-    const bool canCapture = controlsAvailable(status);
+    const bool canCapture = status.connected && status.positionValid;
     drawButton(76, 62, 380, 58, sessionStartSet_ ? "START NEU SETZEN" : "START SETZEN", false, canCapture);
     drawButton(76, 132, 380, 58, sessionEndSet_ ? "ENDE NEU SETZEN" : "ENDE SETZEN", false, canCapture);
     const bool ready = readyToScan(status);
@@ -145,9 +145,7 @@ void ScanUi::drawWorkflow(const ScanMachineStatus* machine) {
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(ready ? green : amber, background);
     String summary;
-    if (feedback_.length()) summary = feedback_;
-    else if (!canCapture) summary = unavailableReason(status);
-    else if (!profile_.frameXSet || !profile_.frameYSet) summary = "BILDFELD KALIBRIEREN";
+    if (!profile_.frameXSet || !profile_.frameYSet) summary = "BILDFELD KALIBRIEREN";
     else if (!sessionStartSet_ || !sessionEndSet_) summary = "START UND ENDE FEHLEN";
     else summary = String(columns_) + " x " + rows_ + "  /  " + totalImages_ + " POSITIONEN";
     drawUiText(display_, summary, 266, 286);
@@ -196,13 +194,10 @@ void ScanUi::drawAxisArrow(int16_t centerX, bool positive, bool pressed, bool en
 
 void ScanUi::drawCalibration(bool xAxis) {
     drawHeader(xAxis ? "BILDFELD X" : "BILDFELD Y", true);
-    const bool available = controlsAvailable(machine_);
-    const bool waitingForIdle = jogStopping_ && machine_.connected && !available;
+    const bool available = machine_.connected && machine_.positionValid;
     display_.setTextDatum(MC_DATUM);
-    display_.setTextColor(available ? muted : amber, background);
-    const String instruction = waitingForIdle ? "BEWEGUNG WIRD GESTOPPT" :
-        (feedback_.length() ? feedback_ : (!available ? unavailableReason(machine_) :
-        (calibrationASet_ ? "ZUR GEGENUEBERLIEGENDEN KANTE FAHREN" : "ERSTE BILDFELDKANTE ANFAHREN")));
+    display_.setTextColor(muted, background);
+    const String instruction = calibrationASet_ ? "ZUR GEGENUEBERLIEGENDEN KANTE FAHREN" : "ERSTE BILDFELDKANTE ANFAHREN";
     drawUiText(display_, instruction, 266, 66);
     drawAxisArrow(136, false, false, available); drawAxisArrow(396, true, false, available);
     display_.setTextColor(text, background);
@@ -240,8 +235,8 @@ void ScanUi::drawParameterControl() {
 
 void ScanUi::drawCamera() {
     drawHeader("KAMERA", true);
-    display_.setTextDatum(MC_DATUM); display_.setTextColor(feedback_.length() ? amber : muted, background);
-    drawUiText(display_, feedback_.length() ? feedback_ : "IO38  /  FESTER IMPULS 50 ms", 266, 74);
+    display_.setTextDatum(MC_DATUM); display_.setTextColor(muted, background);
+    drawUiText(display_, "IO38  /  FESTER IMPULS 50 ms", 266, 74);
     display_.setTextColor(profile_.cameraEnabled ? green : muted, background);
     drawUiText(display_, profile_.cameraEnabled ? "IO38 AKTIV" : "IO38 INAKTIV", 266, 112, true);
     drawButton(86, 150, 360, 58, profile_.cameraEnabled ? "KAMERA: AN" : "KAMERA: AUS", profile_.cameraEnabled);
@@ -275,16 +270,9 @@ void ScanUi::redraw() {
 void ScanUi::openParameter(Parameter value) { parameter_ = value; screen_ = Screen::Parameter; redraw(); }
 
 void ScanUi::startJog(JogDirection direction, bool xAxis) {
-    if (!controlsAvailable(machine_)) {
-        feedback_ = unavailableReason(machine_);
-        redraw();
-        return;
-    }
-    feedback_ = "";
-    jogStopping_ = false;
+    if (!machine_.connected) return;
     jogDirection_ = direction;
     jogAxisX_ = xAxis;
-    jogIdleSince_ = 0;
     touchAction_ = TouchAction::Jog;
     sendJogSegment();
     drawAxisArrow(direction == JogDirection::Negative ? 136 : 396,
@@ -305,24 +293,15 @@ void ScanUi::sendJogSegment() {
 void ScanUi::stopJog() {
     controller_.write(jogCancel);
     jogDirection_ = JogDirection::None;
-    jogStopping_ = true;
-    jogIdleSince_ = 0;
 }
 
 void ScanUi::captureCalibration(const ScanMachineStatus& machine, bool xAxis) {
-    if (!controlsAvailable(machine)) {
-        feedback_ = unavailableReason(machine);
-        redraw();
-        return;
-    }
-    feedback_ = "";
+    if (!machine.connected || !machine.positionValid) return;
     const float position = xAxis ? machine.x : machine.y;
     if (!calibrationASet_) { calibrationA_ = position; calibrationASet_ = true; }
     else {
         const float span = fabsf(position - calibrationA_);
         if (span <= 0.00001F) {
-            feedback_ = "BITTE ZUERST ACHSE VERFAHREN";
-            redraw();
             return;
         }
         if (xAxis) { profile_.frameX = span; profile_.frameXSet = span > 0.00001F; }
@@ -373,13 +352,6 @@ bool ScanUi::controlsAvailable(const ScanMachineStatus& machine) const {
     return machine.connected && machine.motion == ScanMotionState::Idle && machine.positionValid;
 }
 
-String ScanUi::unavailableReason(const ScanMachineStatus& machine) const {
-    if (!machine.connected) return "KEINE VERBINDUNG";
-    if (machine.motion != ScanMotionState::Idle) return "MASCHINE NICHT IDLE";
-    if (!machine.positionValid) return "POSITION NICHT VERFUEGBAR";
-    return "AKTION NICHT VERFUEGBAR";
-}
-
 void ScanUi::sendLine(const String& value) {
     String line = value + '\r'; controller_.write(reinterpret_cast<const uint8_t*>(line.c_str()), line.length()); controller_.flush();
 }
@@ -403,16 +375,7 @@ void ScanUi::targetForIndex(int index, float& x, float& y) const {
 
 void ScanUi::startScan(const ScanMachineStatus& machine) {
     calculateGrid();
-    if (!readyToScan(machine)) {
-        if (!controlsAvailable(machine)) feedback_ = unavailableReason(machine);
-        else if (!profile_.frameXSet || !profile_.frameYSet) feedback_ = "BILDFELD KALIBRIEREN";
-        else if (!sessionStartSet_) feedback_ = "BITTE START SETZEN";
-        else if (!sessionEndSet_) feedback_ = "BITTE ENDE SETZEN";
-        else feedback_ = "SCAN NICHT BEREIT";
-        redraw();
-        return;
-    }
-    feedback_ = "";
+    if (!readyToScan(machine)) return;
     returnX_ = machine.x; returnY_ = machine.y; currentIndex_ = 0; pauseRequested_ = false;
     releaseTrigger(); phase_ = Phase::SendMove; phaseStartedAt_ = millis(); redraw();
 }
@@ -432,10 +395,8 @@ void ScanUi::togglePause() {
 }
 
 void ScanUi::startCameraTest(const ScanMachineStatus& machine) {
-    if (!profile_.cameraEnabled) { feedback_ = "KAMERA ZUERST EINSCHALTEN"; redraw(); return; }
-    if (!controlsAvailable(machine)) { feedback_ = unavailableReason(machine); redraw(); return; }
+    if (!profile_.cameraEnabled || !machine.connected) return;
     if (cameraTestActive_) return;
-    feedback_ = "";
     sendLine("M64 P0"); triggerOutputActive_ = true; cameraTestActive_ = true; phaseStartedAt_ = millis(); redraw();
 }
 
@@ -450,27 +411,8 @@ void ScanUi::advanceScan() {
 
 void ScanUi::service(const ScanMachineStatus& machine) {
     const uint32_t now = millis();
-    const bool wasAvailable = controlsAvailable_;
     machine_ = machine;
-    controlsAvailable_ = controlsAvailable(machine_);
     if (touchAction_ == TouchAction::Jog && now - lastJogAt_ >= 150) sendJogSegment();
-    if (jogStopping_) {
-        if (controlsAvailable_) {
-            if (jogIdleSince_ == 0) jogIdleSince_ = now;
-            if (now - jogIdleSince_ >= 350) {
-                jogStopping_ = false;
-                jogIdleSince_ = 0;
-                feedback_ = "";
-            }
-        } else {
-            jogIdleSince_ = 0;
-        }
-    }
-    if (wasAvailable != controlsAvailable_ && !jogStopping_ && phase_ == Phase::Idle && touchAction_ != TouchAction::Jog &&
-        (screen_ == Screen::Workflow || screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY)) {
-        if (controlsAvailable_) feedback_ = "";
-        redraw();
-    }
     if (cameraTestActive_ && now - phaseStartedAt_ >= cameraPulseMs) { releaseTrigger(); if (screen_ == Screen::Camera) redraw(); }
     if (phase_ == Phase::Idle || phase_ == Phase::Done || phase_ == Phase::Error) return;
     if (!machine.connected || machine.motion == ScanMotionState::Blocked) { stopScan(); return; }
@@ -501,22 +443,20 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         return;
     }
     if (screen_ != Screen::Workflow && screen_ != Screen::SettingsMenu && inside(x, y, 62, 8, 58, 32)) {
-        calibrationASet_ = false; feedback_ = ""; screen_ = Screen::SettingsMenu; redraw(); return;
+        calibrationASet_ = false; screen_ = Screen::SettingsMenu; redraw(); return;
     }
     if (screen_ == Screen::Workflow) {
         if (inside(x, y, 76, 62, 380, 58)) {
-            if (controlsAvailable(machine)) {
-                feedback_ = "STARTPUNKT AKTUALISIERT";
+            if (machine.connected && machine.positionValid) {
                 sessionStartX_ = machine.x; sessionStartY_ = machine.y; sessionStartSet_ = true; calculateGrid(); redraw();
-            } else { feedback_ = unavailableReason(machine); redraw(); }
+            }
         } else if (inside(x, y, 76, 132, 380, 58)) {
-            if (controlsAvailable(machine)) {
-                feedback_ = "ENDPUNKT AKTUALISIERT";
+            if (machine.connected && machine.positionValid) {
                 sessionEndX_ = machine.x; sessionEndY_ = machine.y; sessionEndSet_ = true; calculateGrid(); redraw();
-            } else { feedback_ = unavailableReason(machine); redraw(); }
+            }
         } else if (inside(x, y, 76, 202, 380, 62)) startScan(machine);
     } else if (screen_ == Screen::SettingsMenu) {
-        if (inside(x, y, 68, 60, 190, 54)) { calibrationASet_ = false; feedback_ = ""; screen_ = Screen::CalibrateX; redraw(); }
+        if (inside(x, y, 68, 60, 190, 54)) { calibrationASet_ = false; screen_ = Screen::CalibrateX; redraw(); }
         else if (inside(x, y, 274, 60, 190, 54)) openParameter(Parameter::Overlap);
         else if (inside(x, y, 68, 126, 190, 54)) openParameter(Parameter::Speed);
         else if (inside(x, y, 274, 126, 190, 54)) openParameter(Parameter::Settle);
@@ -533,7 +473,7 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         else if (inside(x, y, 70, 210, 120, 70)) changeParameter(-1);
         else if (inside(x, y, 342, 210, 120, 70)) changeParameter(1);
     } else if (screen_ == Screen::Camera) {
-        if (inside(x, y, 86, 150, 360, 58)) { feedback_ = ""; profile_.cameraEnabled = !profile_.cameraEnabled; if (!profile_.cameraEnabled) releaseTrigger(); saveProfile(); redraw(); }
+        if (inside(x, y, 86, 150, 360, 58)) { profile_.cameraEnabled = !profile_.cameraEnabled; if (!profile_.cameraEnabled) releaseTrigger(); saveProfile(); redraw(); }
         else if (inside(x, y, 86, 228, 360, 58)) startCameraTest(machine);
     } else if (screen_ == Screen::Resolution) {
         if (inside(x, y, 86, 70, 360, 56)) { profile_.cameraWidth = 1920; profile_.cameraHeight = 1080; }

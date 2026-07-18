@@ -62,13 +62,9 @@ private:
     bool triggerOutputActive_ = false;
     bool cameraTestActive_ = false;
     bool visible_ = false;
-    bool controlsAvailable_ = false;
-    bool jogStopping_ = false;
     bool jogAxisX_ = true;
     uint32_t lastJogAt_ = 0;
-    uint32_t jogIdleSince_ = 0;
     ScanMachineStatus machine_;
-    String feedback_;
     float calibrationA_ = 0.0F;
     bool calibrationASet_ = false;
     bool sessionStartSet_ = false;
@@ -112,7 +108,6 @@ private:
     void calculateGrid();
     bool readyToScan(const ScanMachineStatus& machine) const;
     bool controlsAvailable(const ScanMachineStatus& machine) const;
-    String unavailableReason(const ScanMachineStatus& machine) const;
     void startScan(const ScanMachineStatus& machine);
     void stopScan();
     void togglePause();
