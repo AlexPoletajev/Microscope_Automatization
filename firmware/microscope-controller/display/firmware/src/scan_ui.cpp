@@ -197,10 +197,12 @@ void ScanUi::drawAxisArrow(int16_t centerX, bool positive, bool pressed, bool en
 void ScanUi::drawCalibration(bool xAxis) {
     drawHeader(xAxis ? "BILDFELD X" : "BILDFELD Y", true);
     const bool available = controlsAvailable(machine_);
+    const bool waitingForIdle = jogStopping_ && machine_.connected && !available;
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(available ? muted : amber, background);
-    const String instruction = feedback_.length() ? feedback_ : (!available ? unavailableReason(machine_) :
-        (calibrationASet_ ? "ZUR GEGENUEBERLIEGENDEN KANTE FAHREN" : "ERSTE BILDFELDKANTE ANFAHREN"));
+    const String instruction = waitingForIdle ? "BEWEGUNG WIRD GESTOPPT" :
+        (feedback_.length() ? feedback_ : (!available ? unavailableReason(machine_) :
+        (calibrationASet_ ? "ZUR GEGENUEBERLIEGENDEN KANTE FAHREN" : "ERSTE BILDFELDKANTE ANFAHREN")));
     drawUiText(display_, instruction, 266, 66);
     drawAxisArrow(136, false, false, available); drawAxisArrow(396, true, false, available);
     display_.setTextColor(text, background);
@@ -216,6 +218,13 @@ void ScanUi::drawCalibration(bool xAxis) {
 void ScanUi::drawParameter() {
     const char* title = parameter_ == Parameter::Overlap ? "OVERLAP" : parameter_ == Parameter::Speed ? "TEMPO" : "RUHEZEIT";
     drawHeader(title, true);
+    drawParameterControl();
+    drawButton(70, 210, 120, 70, "-", false); drawButton(342, 210, 120, 70, "+", false);
+}
+
+void ScanUi::drawParameterControl() {
+    display_.fillRect(80, 62, 372, 58, background);
+    display_.fillRect(120, 140, 300, 45, background);
     int value, minimum, maximum;
     String unit;
     if (parameter_ == Parameter::Overlap) { value = profile_.overlap; minimum = 0; maximum = 80; unit = "%"; }
@@ -227,7 +236,6 @@ void ScanUi::drawParameter() {
     const int16_t handle = map(value, minimum, maximum, sliderLeft, sliderRight);
     if (handle > sliderLeft) display_.fillRoundRect(sliderLeft, 155, handle - sliderLeft, 14, 7, cyan);
     display_.fillCircle(handle, 162, 16, cyan); display_.fillCircle(handle, 162, 7, text);
-    drawButton(70, 210, 120, 70, "-", false); drawButton(342, 210, 120, 70, "+", false);
 }
 
 void ScanUi::drawCamera() {
@@ -273,6 +281,7 @@ void ScanUi::startJog(JogDirection direction, bool xAxis) {
         return;
     }
     feedback_ = "";
+    jogStopping_ = false;
     jogDirection_ = direction;
     jogAxisX_ = xAxis;
     touchAction_ = TouchAction::Jog;
@@ -295,6 +304,7 @@ void ScanUi::sendJogSegment() {
 void ScanUi::stopJog() {
     controller_.write(jogCancel);
     jogDirection_ = JogDirection::None;
+    jogStopping_ = true;
 }
 
 void ScanUi::captureCalibration(const ScanMachineStatus& machine, bool xAxis) {
@@ -324,10 +334,16 @@ void ScanUi::captureCalibration(const ScanMachineStatus& machine, bool xAxis) {
 
 void ScanUi::updateParameterFromX(int16_t x) {
     x = constrain(x, sliderLeft, sliderRight);
+    const int previous = parameter_ == Parameter::Overlap ? profile_.overlap :
+        (parameter_ == Parameter::Speed ? profile_.speed : profile_.settleMs);
     if (parameter_ == Parameter::Overlap) profile_.overlap = map(x, sliderLeft, sliderRight, 0, 80);
     else if (parameter_ == Parameter::Speed) profile_.speed = map(x, sliderLeft, sliderRight, 1, 90);
     else profile_.settleMs = map(x, sliderLeft, sliderRight, 0, 40) * 50;
-    calculateGrid(); redraw();
+    const int current = parameter_ == Parameter::Overlap ? profile_.overlap :
+        (parameter_ == Parameter::Speed ? profile_.speed : profile_.settleMs);
+    if (current == previous) return;
+    calculateGrid();
+    if (visible_ && screen_ == Screen::Parameter) drawParameterControl();
 }
 
 void ScanUi::changeParameter(int delta) {
@@ -373,8 +389,14 @@ void ScanUi::sendMove(float x, float y) {
 void ScanUi::targetForIndex(int index, float& x, float& y) const {
     const int row = index / columns_; int column = index % columns_;
     if (row & 1) column = columns_ - 1 - column;
-    x = sessionStartX_ + (sessionEndX_ - sessionStartX_) * (columns_ > 1 ? static_cast<float>(column) / (columns_ - 1) : 0.0F);
-    y = sessionStartY_ + (sessionEndY_ - sessionStartY_) * (rows_ > 1 ? static_cast<float>(row) / (rows_ - 1) : 0.0F);
+    const float spanX = fabsf(sessionEndX_ - sessionStartX_);
+    const float spanY = fabsf(sessionEndY_ - sessionStartY_);
+    const float strideX = profile_.frameX * (1.0F - profile_.overlap / 100.0F);
+    const float strideY = profile_.frameY * (1.0F - profile_.overlap / 100.0F);
+    const float offsetX = min(spanX, column * strideX);
+    const float offsetY = min(spanY, row * strideY);
+    x = sessionStartX_ + (sessionEndX_ >= sessionStartX_ ? offsetX : -offsetX);
+    y = sessionStartY_ + (sessionEndY_ >= sessionStartY_ ? offsetY : -offsetY);
 }
 
 void ScanUi::startScan(const ScanMachineStatus& machine) {
@@ -430,6 +452,10 @@ void ScanUi::service(const ScanMachineStatus& machine) {
     machine_ = machine;
     controlsAvailable_ = controlsAvailable(machine_);
     if (touchAction_ == TouchAction::Jog && now - lastJogAt_ >= 150) sendJogSegment();
+    if (jogStopping_ && controlsAvailable_) {
+        jogStopping_ = false;
+        feedback_ = "";
+    }
     if (wasAvailable != controlsAvailable_ && phase_ == Phase::Idle && touchAction_ != TouchAction::Jog &&
         (screen_ == Screen::Workflow || screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY)) {
         if (controlsAvailable_) feedback_ = "";
@@ -511,7 +537,7 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
 void ScanUi::onDrag(int16_t x) { if (touchAction_ == TouchAction::Slider) updateParameterFromX(x); }
 
 void ScanUi::onRelease() {
-    if (touchAction_ == TouchAction::Jog) { const bool xAxis = screen_ == Screen::CalibrateX; stopJog(); drawCalibration(xAxis); }
+    if (touchAction_ == TouchAction::Jog) { stopJog(); redraw(); }
     if (touchAction_ == TouchAction::Slider) saveProfile();
     touchAction_ = TouchAction::None;
 }

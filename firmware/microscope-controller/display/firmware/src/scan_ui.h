@@ -63,6 +63,7 @@ private:
     bool cameraTestActive_ = false;
     bool visible_ = false;
     bool controlsAvailable_ = false;
+    bool jogStopping_ = false;
     bool jogAxisX_ = true;
     uint32_t lastJogAt_ = 0;
     ScanMachineStatus machine_;
@@ -93,6 +94,7 @@ private:
     void drawSettingsMenu();
     void drawCalibration(bool xAxis);
     void drawParameter();
+    void drawParameterControl();
     void drawCamera();
     void drawResolution();
     void drawAxisArrow(int16_t centerX, bool positive, bool pressed = false, bool enabled = true);
