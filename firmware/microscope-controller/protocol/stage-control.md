@@ -53,4 +53,5 @@ camera output before resetting motion.
 The display captures two session-only XYZ positions, so each endpoint includes its own focus Z coordinate. After
 the operator chooses a speed and round count, the test first moves to A and then sends one complete A-B-A sequence
 per round. It waits for `Idle` after every absolute XYZ move and finishes at A. Test speed and round count persist
-in display NVS. Stop aborts the active move; navigation remains locked until the test finishes or is stopped.
+in display NVS. Stop aborts the active move, waits for the controller reset and sends `$X` to leave the resulting
+alarm state; navigation remains locked until FluidNC confirms `Idle` again.

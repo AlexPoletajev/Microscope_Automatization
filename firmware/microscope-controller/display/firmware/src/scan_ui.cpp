@@ -36,6 +36,7 @@ const char* phaseLabel(int value) {
         case 7: return "RUECKFAHRT";
         case 8: return "FERTIG";
         case 9: return "ABGEBROCHEN";
+        case 10: return "STOPPE...";
         default: return "BEREIT";
     }
 }
@@ -165,6 +166,8 @@ void ScanUi::drawProgress() {
     if (width) display_.fillRoundRect(78, 164, width, 14, 7, phase_ == Phase::Done ? green : cyan);
     if (phase_ == Phase::Done || phase_ == Phase::Error) {
         drawButton(156, 242, 220, 50, "SCHLIESSEN", phase_ == Phase::Done);
+    } else if (phase_ == Phase::Recover) {
+        drawButton(156, 242, 220, 50, "STOPPE...", false, false);
     } else {
         drawButton(76, 236, 178, 56, phase_ == Phase::Paused || pauseRequested_ ? "FORTSETZEN" : "PAUSE", phase_ == Phase::Paused || pauseRequested_);
         drawButton(278, 236, 178, 56, "STOP", true);
@@ -407,7 +410,12 @@ void ScanUi::releaseTrigger() { sendLine("M65 P0"); triggerOutputActive_ = false
 void ScanUi::stopScan() {
     releaseTrigger();
     controller_.write('!'); controller_.write(softReset);
-    phase_ = Phase::Error; pauseRequested_ = false; redraw();
+    recoveryUnlockSent_ = false;
+    lastRecoveryUnlockAt_ = 0;
+    phase_ = Phase::Recover;
+    phaseStartedAt_ = millis();
+    pauseRequested_ = false;
+    redraw();
 }
 
 void ScanUi::togglePause() {
@@ -436,6 +444,20 @@ void ScanUi::service(const ScanMachineStatus& machine) {
     machine_ = machine;
     if (touchAction_ == TouchAction::Jog && now - lastJogAt_ >= 150) sendJogSegment();
     if (cameraTestActive_ && now - phaseStartedAt_ >= cameraPulseMs) { releaseTrigger(); if (screen_ == Screen::Camera) redraw(); }
+    if (phase_ == Phase::Recover) {
+        if (machine.connected && recoveryUnlockSent_ && machine.motion == ScanMotionState::Idle) {
+            phase_ = Phase::Error;
+            redraw();
+            return;
+        }
+        if (machine.connected && now - phaseStartedAt_ >= 300 &&
+            (!recoveryUnlockSent_ || now - lastRecoveryUnlockAt_ >= 500)) {
+            sendLine("$X");
+            recoveryUnlockSent_ = true;
+            lastRecoveryUnlockAt_ = now;
+        }
+        return;
+    }
     if (phase_ == Phase::Idle || phase_ == Phase::Done || phase_ == Phase::Error) return;
     if (!machine.connected || machine.motion == ScanMotionState::Blocked) { stopScan(); return; }
     if (phase_ == Phase::Paused) return;
@@ -459,7 +481,7 @@ void ScanUi::service(const ScanMachineStatus& machine) {
 void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
     if (screen_ == Screen::Workflow && phase_ != Phase::Idle) {
         if ((phase_ == Phase::Done || phase_ == Phase::Error) && inside(x, y, 156, 242, 220, 50)) { phase_ = Phase::Idle; redraw(); }
-        else if (phase_ != Phase::Done && phase_ != Phase::Error) {
+        else if (phase_ != Phase::Done && phase_ != Phase::Error && phase_ != Phase::Recover) {
             if (inside(x, y, 76, 236, 178, 56)) togglePause(); else if (inside(x, y, 278, 236, 178, 56)) stopScan();
         }
         return;

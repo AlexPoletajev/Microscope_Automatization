@@ -32,7 +32,7 @@ private:
     enum class Parameter { Overlap, Speed, Settle, FocusSteps };
     enum class TouchAction { None, Jog, Slider };
     enum class JogDirection { None, Negative, Positive };
-    enum class Phase { Idle, SendMove, WaitMove, Settle, TriggerOn, TriggerOff, Paused, ReturnStart, Done, Error };
+    enum class Phase { Idle, SendMove, WaitMove, Settle, TriggerOn, TriggerOff, Paused, ReturnStart, Done, Error, Recover };
 
     struct Profile {
         float frameX = 0.0F;
@@ -63,9 +63,11 @@ private:
     bool pauseRequested_ = false;
     bool triggerOutputActive_ = false;
     bool cameraTestActive_ = false;
+    bool recoveryUnlockSent_ = false;
     bool visible_ = false;
     char jogAxis_ = 'X';
     uint32_t lastJogAt_ = 0;
+    uint32_t lastRecoveryUnlockAt_ = 0;
     ScanMachineStatus machine_;
     float calibrationA_ = 0.0F;
     bool calibrationASet_ = false;

@@ -106,7 +106,8 @@ void SlipTestUi::drawWorkflow() {
 }
 
 void SlipTestUi::drawProgress() {
-    drawHeader(phase_ == Phase::Done ? "TEST BEENDET" : (phase_ == Phase::Error ? "TEST ABGEBROCHEN" : "SCHLUPFTEST"));
+    drawHeader(phase_ == Phase::Done ? "TEST BEENDET" :
+        (phase_ == Phase::Error ? "TEST ABGEBROCHEN" : (phase_ == Phase::Recover ? "TEST STOPPT" : "SCHLUPFTEST")));
     const int completedRounds = phase_ == Phase::Done ? rounds_ : min(rounds_, max(0, (targetIndex_ - 1) / 2));
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(phase_ == Phase::Error ? red : (phase_ == Phase::Done ? green : cyan), background);
@@ -122,6 +123,8 @@ void SlipTestUi::drawProgress() {
     if (width > 0) display_.fillRoundRect(78, 164, width, 14, 7, phase_ == Phase::Done ? green : cyan);
     if (phase_ == Phase::Done || phase_ == Phase::Error) {
         drawButton(156, 236, 220, 56, "SCHLIESSEN", phase_ == Phase::Done);
+    } else if (phase_ == Phase::Recover) {
+        drawButton(156, 236, 220, 56, "STOPPE...", false, false);
     } else {
         drawButton(156, 236, 220, 56, "STOP", true);
     }
@@ -215,7 +218,10 @@ void SlipTestUi::startTest(const ScanMachineStatus& machine) {
 void SlipTestUi::stopTest() {
     controller_.write('!');
     controller_.write(softReset);
-    phase_ = Phase::Error;
+    recoveryUnlockSent_ = false;
+    lastRecoveryUnlockAt_ = 0;
+    phase_ = Phase::Recover;
+    phaseStartedAt_ = millis();
     redraw();
 }
 
@@ -227,8 +233,24 @@ void SlipTestUi::closeResult() {
 
 void SlipTestUi::service(const ScanMachineStatus& machine) {
     machine_ = machine;
-    if (phase_ == Phase::Idle || phase_ == Phase::Done || phase_ == Phase::Error) return;
     const uint32_t now = millis();
+    if (phase_ == Phase::Recover) {
+        if (machine.connected && recoveryUnlockSent_ && machine.motion == ScanMotionState::Idle) {
+            phase_ = Phase::Error;
+            redraw();
+            return;
+        }
+        if (machine.connected && now - phaseStartedAt_ >= 300 &&
+            (!recoveryUnlockSent_ || now - lastRecoveryUnlockAt_ >= 500)) {
+            const String unlock = "$X\r";
+            controller_.write(reinterpret_cast<const uint8_t*>(unlock.c_str()), unlock.length());
+            controller_.flush();
+            recoveryUnlockSent_ = true;
+            lastRecoveryUnlockAt_ = now;
+        }
+        return;
+    }
+    if (phase_ == Phase::Idle || phase_ == Phase::Done || phase_ == Phase::Error) return;
     if (!machine.connected || machine.motion == ScanMotionState::Blocked) {
         if (machine.connected) stopTest();
         else { phase_ = Phase::Error; redraw(); }
@@ -253,7 +275,8 @@ void SlipTestUi::service(const ScanMachineStatus& machine) {
 void SlipTestUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
     if (phase_ != Phase::Idle) {
         if ((phase_ == Phase::Done || phase_ == Phase::Error) && inside(x, y, 156, 236, 220, 56)) closeResult();
-        else if (phase_ != Phase::Done && phase_ != Phase::Error && inside(x, y, 156, 236, 220, 56)) stopTest();
+        else if (phase_ != Phase::Done && phase_ != Phase::Error && phase_ != Phase::Recover &&
+                 inside(x, y, 156, 236, 220, 56)) stopTest();
         return;
     }
     if (screen_ != Screen::Workflow && inside(x, y, 62, 8, 58, 32)) {
@@ -292,5 +315,5 @@ void SlipTestUi::handleTouch(bool touched, int16_t x, int16_t y, const ScanMachi
 }
 
 bool SlipTestUi::running() const {
-    return phase_ == Phase::SendMove || phase_ == Phase::WaitMove;
+    return phase_ == Phase::SendMove || phase_ == Phase::WaitMove || phase_ == Phase::Recover;
 }

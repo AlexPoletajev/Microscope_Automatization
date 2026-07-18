@@ -18,7 +18,7 @@ public:
 
 private:
     enum class Screen { Workflow, Speed, Rounds };
-    enum class Phase { Idle, SendMove, WaitMove, Done, Error };
+    enum class Phase { Idle, SendMove, WaitMove, Done, Error, Recover };
     enum class TouchAction { None, Slider };
 
     TFT_eSPI& display_;
@@ -32,6 +32,7 @@ private:
     bool pointASet_ = false;
     bool pointBSet_ = false;
     bool moveObserved_ = false;
+    bool recoveryUnlockSent_ = false;
     float pointAX_ = 0.0F;
     float pointAY_ = 0.0F;
     float pointAZ_ = 0.0F;
@@ -42,6 +43,7 @@ private:
     int rounds_ = 10;
     int targetIndex_ = 0;
     uint32_t phaseStartedAt_ = 0;
+    uint32_t lastRecoveryUnlockAt_ = 0;
 
     void loadSettings();
     void saveSettings();
