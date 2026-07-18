@@ -7,7 +7,8 @@ namespace {
 constexpr int16_t left = 52;
 constexpr int16_t sliderLeft = 145;
 constexpr int16_t sliderRight = 386;
-constexpr int scanMaxSpeed = 180;
+constexpr int scanMaxSpeed = 600;
+constexpr int maxFocusSteps = 20;
 constexpr uint32_t cameraPulseMs = 50;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
@@ -64,13 +65,16 @@ void ScanUi::loadProfile() {
     if (!p.begin("scan", true)) return;
     profile_.frameX = p.getFloat("frameX", 0.0F);
     profile_.frameY = p.getFloat("frameY", 0.0F);
+    profile_.frameZ = p.getFloat("frameZ", 0.0F);
     profile_.cameraWidth = p.getInt("camW", 1920);
     profile_.cameraHeight = p.getInt("camH", 1080);
     profile_.overlap = constrain(p.getInt("overlap", 15), 0, 80);
     profile_.speed = constrain(p.getInt("speed", 60), 1, scanMaxSpeed);
     profile_.settleMs = constrain((p.getInt("settle", 300) + 25) / 50 * 50, 0, 2000);
+    profile_.focusSteps = constrain(p.getInt("focusN", 1), 1, maxFocusSteps);
     profile_.frameXSet = p.getBool("frameXok", false) && profile_.frameX > 0.00001F;
     profile_.frameYSet = p.getBool("frameYok", false) && profile_.frameY > 0.00001F;
+    profile_.frameZSet = p.getBool("frameZok", false) && profile_.frameZ > 0.00001F;
     profile_.cameraEnabled = p.getBool("camera", p.getBool("trigger", false));
     profile_.returnToStart = p.getBool("return", true);
     p.end();
@@ -94,11 +98,11 @@ void ScanUi::migrateLegacyProfile() {
 void ScanUi::saveProfile() {
     Preferences p;
     if (!p.begin("scan", false)) return;
-    p.putFloat("frameX", profile_.frameX); p.putFloat("frameY", profile_.frameY);
-    p.putBool("frameXok", profile_.frameXSet); p.putBool("frameYok", profile_.frameYSet);
+    p.putFloat("frameX", profile_.frameX); p.putFloat("frameY", profile_.frameY); p.putFloat("frameZ", profile_.frameZ);
+    p.putBool("frameXok", profile_.frameXSet); p.putBool("frameYok", profile_.frameYSet); p.putBool("frameZok", profile_.frameZSet);
     p.putInt("camW", profile_.cameraWidth); p.putInt("camH", profile_.cameraHeight);
     p.putInt("overlap", profile_.overlap); p.putInt("speed", profile_.speed);
-    p.putInt("settle", profile_.settleMs); p.putBool("camera", profile_.cameraEnabled);
+    p.putInt("settle", profile_.settleMs); p.putInt("focusN", profile_.focusSteps); p.putBool("camera", profile_.cameraEnabled);
     p.putBool("return", profile_.returnToStart);
     p.end();
 }
@@ -146,9 +150,9 @@ void ScanUi::drawWorkflow(const ScanMachineStatus* machine) {
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(ready ? green : amber, background);
     String summary;
-    if (!profile_.frameXSet || !profile_.frameYSet) summary = "BILDFELD KALIBRIEREN";
+    if (!profile_.frameXSet || !profile_.frameYSet || (profile_.focusSteps > 1 && !profile_.frameZSet)) summary = "BILDFELD KALIBRIEREN";
     else if (!sessionStartSet_ || !sessionEndSet_) summary = "START UND ENDE FEHLEN";
-    else summary = String(columns_) + " x " + rows_ + "  /  " + totalImages_ + " POSITIONEN";
+    else summary = String(columns_) + " x " + rows_ + "  /  " + totalImages_ + " AUFNAHMEN";
     drawUiText(display_, summary, 266, 286);
 }
 
@@ -174,13 +178,21 @@ void ScanUi::drawProgress() {
 
 void ScanUi::drawSettingsMenu() {
     drawHeader("EINSTELLUNGEN");
-    drawButton(68, 60, 190, 54, "BILDFELD", profile_.frameXSet && profile_.frameYSet);
-    drawButton(274, 60, 190, 54, "OVERLAP  " + String(profile_.overlap) + "%");
-    drawButton(68, 126, 190, 54, "TEMPO  " + String(profile_.speed));
-    drawButton(274, 126, 190, 54, "RUHE  " + String(profile_.settleMs));
-    drawButton(68, 192, 190, 54, "KAMERA", profile_.cameraEnabled);
-    drawButton(274, 192, 190, 54, "AUFLOESUNG");
-    drawButton(68, 258, 396, 48, profile_.returnToStart ? "RUECKKEHR ZUM START: AN" : "RUECKKEHR ZUM START: AUS", profile_.returnToStart);
+    drawButton(68, 54, 190, 46, "BILDFELD", profile_.frameXSet && profile_.frameYSet && (profile_.focusSteps == 1 || profile_.frameZSet));
+    drawButton(274, 54, 190, 46, "OVERLAP " + String(profile_.overlap) + "%");
+    drawButton(68, 108, 190, 46, "TEMPO " + String(profile_.speed));
+    drawButton(274, 108, 190, 46, "RUHE " + String(profile_.settleMs));
+    drawButton(68, 162, 190, 46, "SCHAERFE " + String(profile_.focusSteps));
+    drawButton(274, 162, 190, 46, "KAMERA", profile_.cameraEnabled);
+    drawButton(68, 216, 190, 46, "AUFLOESUNG");
+    drawButton(274, 216, 190, 46, profile_.returnToStart ? "RUECKKEHR AN" : "RUECKKEHR AUS", profile_.returnToStart);
+}
+
+void ScanUi::drawFieldMenu() {
+    drawHeader("BILDFELD", true);
+    drawButton(86, 62, 360, 58, profile_.frameXSet ? "X NEU VERMESSEN" : "X VERMESSEN", profile_.frameXSet);
+    drawButton(86, 132, 360, 58, profile_.frameYSet ? "Y NEU VERMESSEN" : "Y VERMESSEN", profile_.frameYSet);
+    drawButton(86, 202, 360, 58, profile_.frameZSet ? "Z NEU VERMESSEN" : "Z VERMESSEN", profile_.frameZSet);
 }
 
 void ScanUi::drawAxisArrow(int16_t centerX, bool positive, bool pressed, bool enabled) {
@@ -193,8 +205,9 @@ void ScanUi::drawAxisArrow(int16_t centerX, bool positive, bool pressed, bool en
     else display_.fillTriangle(centerX - 24, 160, centerX + 14, 136, centerX + 14, 184, arrowColor);
 }
 
-void ScanUi::drawCalibration(bool xAxis) {
-    drawHeader(xAxis ? "BILDFELD X" : "BILDFELD Y", true);
+void ScanUi::drawCalibration(char axis) {
+    const String title = String("BILDFELD ") + axis;
+    drawHeader(title.c_str(), true);
     const bool available = machine_.connected && machine_.positionValid;
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(muted, background);
@@ -202,17 +215,19 @@ void ScanUi::drawCalibration(bool xAxis) {
     drawUiText(display_, instruction, 266, 66);
     drawAxisArrow(136, false, false, available); drawAxisArrow(396, true, false, available);
     display_.setTextColor(text, background);
-    drawUiText(display_, xAxis ? "X-ACHSE" : "Y-ACHSE", 266, 160, true);
+    drawUiText(display_, String(axis) + "-ACHSE", 266, 160, true);
     drawButton(116, 232, 300, 56, calibrationASet_ ? "ENDE UEBERNEHMEN" : "START UEBERNEHMEN", false, available);
-    const bool valid = xAxis ? profile_.frameXSet : profile_.frameYSet;
+    const bool valid = axis == 'X' ? profile_.frameXSet : (axis == 'Y' ? profile_.frameYSet : profile_.frameZSet);
     if (valid) {
         display_.setTextColor(green, background);
-        drawUiText(display_, String(xAxis ? profile_.frameX : profile_.frameY, 4) + " mm", 266, 300);
+        const float value = axis == 'X' ? profile_.frameX : (axis == 'Y' ? profile_.frameY : profile_.frameZ);
+        drawUiText(display_, String(value, 4) + " mm", 266, 300);
     }
 }
 
 void ScanUi::drawParameter() {
-    const char* title = parameter_ == Parameter::Overlap ? "OVERLAP" : parameter_ == Parameter::Speed ? "TEMPO" : "RUHEZEIT";
+    const char* title = parameter_ == Parameter::Overlap ? "OVERLAP" : parameter_ == Parameter::Speed ? "TEMPO" :
+        (parameter_ == Parameter::Settle ? "RUHEZEIT" : "SCHAERFESCHRITTE");
     drawHeader(title, true);
     drawParameterControl();
     drawButton(70, 210, 120, 70, "-", false); drawButton(342, 210, 120, 70, "+", false);
@@ -225,7 +240,8 @@ void ScanUi::drawParameterControl() {
     String unit;
     if (parameter_ == Parameter::Overlap) { value = profile_.overlap; minimum = 0; maximum = 80; unit = "%"; }
     else if (parameter_ == Parameter::Speed) { value = profile_.speed; minimum = 1; maximum = scanMaxSpeed; unit = " mm/min"; }
-    else { value = profile_.settleMs; minimum = 0; maximum = 2000; unit = " ms"; }
+    else if (parameter_ == Parameter::Settle) { value = profile_.settleMs; minimum = 0; maximum = 2000; unit = " ms"; }
+    else { value = profile_.focusSteps; minimum = 1; maximum = maxFocusSteps; unit = " SCHRITTE"; }
     display_.setTextDatum(MC_DATUM); display_.setTextColor(text, background);
     drawUiText(display_, String(value) + unit, 266, 92, true);
     display_.fillRoundRect(sliderLeft, 155, sliderRight - sliderLeft, 14, 7, lineColor);
@@ -255,8 +271,10 @@ void ScanUi::draw() {
     display_.fillRect(left, 0, 480 - left, 320, background);
     if (screen_ == Screen::Workflow) phase_ == Phase::Idle ? drawWorkflow() : drawProgress();
     else if (screen_ == Screen::SettingsMenu) drawSettingsMenu();
-    else if (screen_ == Screen::CalibrateX) drawCalibration(true);
-    else if (screen_ == Screen::CalibrateY) drawCalibration(false);
+    else if (screen_ == Screen::FieldMenu) drawFieldMenu();
+    else if (screen_ == Screen::CalibrateX) drawCalibration('X');
+    else if (screen_ == Screen::CalibrateY) drawCalibration('Y');
+    else if (screen_ == Screen::CalibrateZ) drawCalibration('Z');
     else if (screen_ == Screen::Parameter) drawParameter();
     else if (screen_ == Screen::Camera) drawCamera();
     else drawResolution();
@@ -270,10 +288,10 @@ void ScanUi::redraw() {
 
 void ScanUi::openParameter(Parameter value) { parameter_ = value; screen_ = Screen::Parameter; redraw(); }
 
-void ScanUi::startJog(JogDirection direction, bool xAxis) {
+void ScanUi::startJog(JogDirection direction, char axis) {
     if (!machine_.connected) return;
     jogDirection_ = direction;
-    jogAxisX_ = xAxis;
+    jogAxis_ = axis;
     touchAction_ = TouchAction::Jog;
     sendJogSegment();
     drawAxisArrow(direction == JogDirection::Negative ? 136 : 396,
@@ -283,7 +301,7 @@ void ScanUi::startJog(JogDirection direction, bool xAxis) {
 void ScanUi::sendJogSegment() {
     if (jogDirection_ == JogDirection::None) return;
     String command = "$J=G91 G21 ";
-    command += jogAxisX_ ? 'X' : 'Y';
+    command += jogAxis_;
     command += jogDirection_ == JogDirection::Positive ? "-0.20" : "0.20";
     command += " F60\r";
     controller_.write(reinterpret_cast<const uint8_t*>(command.c_str()), command.length());
@@ -296,20 +314,20 @@ void ScanUi::stopJog() {
     jogDirection_ = JogDirection::None;
 }
 
-void ScanUi::captureCalibration(const ScanMachineStatus& machine, bool xAxis) {
+void ScanUi::captureCalibration(const ScanMachineStatus& machine, char axis) {
     if (!machine.connected || !machine.positionValid) return;
-    const float position = xAxis ? machine.x : machine.y;
+    const float position = axis == 'X' ? machine.x : (axis == 'Y' ? machine.y : machine.z);
     if (!calibrationASet_) { calibrationA_ = position; calibrationASet_ = true; }
     else {
         const float span = fabsf(position - calibrationA_);
         if (span <= 0.00001F) {
             return;
         }
-        if (xAxis) { profile_.frameX = span; profile_.frameXSet = span > 0.00001F; }
-        else { profile_.frameY = span; profile_.frameYSet = span > 0.00001F; }
+        if (axis == 'X') { profile_.frameX = span; profile_.frameXSet = true; }
+        else if (axis == 'Y') { profile_.frameY = span; profile_.frameYSet = true; }
+        else { profile_.frameZ = span; profile_.frameZSet = true; }
         calibrationASet_ = false; saveProfile(); calculateGrid();
-        if (xAxis && profile_.frameXSet) screen_ = Screen::CalibrateY;
-        else if (!xAxis && profile_.frameYSet) screen_ = Screen::SettingsMenu;
+        screen_ = Screen::FieldMenu;
     }
     redraw();
 }
@@ -317,12 +335,13 @@ void ScanUi::captureCalibration(const ScanMachineStatus& machine, bool xAxis) {
 void ScanUi::updateParameterFromX(int16_t x) {
     x = constrain(x, sliderLeft, sliderRight);
     const int previous = parameter_ == Parameter::Overlap ? profile_.overlap :
-        (parameter_ == Parameter::Speed ? profile_.speed : profile_.settleMs);
+        (parameter_ == Parameter::Speed ? profile_.speed : (parameter_ == Parameter::Settle ? profile_.settleMs : profile_.focusSteps));
     if (parameter_ == Parameter::Overlap) profile_.overlap = map(x, sliderLeft, sliderRight, 0, 80);
     else if (parameter_ == Parameter::Speed) profile_.speed = map(x, sliderLeft, sliderRight, 1, scanMaxSpeed);
-    else profile_.settleMs = map(x, sliderLeft, sliderRight, 0, 40) * 50;
+    else if (parameter_ == Parameter::Settle) profile_.settleMs = map(x, sliderLeft, sliderRight, 0, 40) * 50;
+    else profile_.focusSteps = map(x, sliderLeft, sliderRight, 1, maxFocusSteps);
     const int current = parameter_ == Parameter::Overlap ? profile_.overlap :
-        (parameter_ == Parameter::Speed ? profile_.speed : profile_.settleMs);
+        (parameter_ == Parameter::Speed ? profile_.speed : (parameter_ == Parameter::Settle ? profile_.settleMs : profile_.focusSteps));
     if (current == previous) return;
     calculateGrid();
     if (visible_ && screen_ == Screen::Parameter) drawParameterControl();
@@ -331,7 +350,8 @@ void ScanUi::updateParameterFromX(int16_t x) {
 void ScanUi::changeParameter(int delta) {
     if (parameter_ == Parameter::Overlap) profile_.overlap = constrain(profile_.overlap + delta, 0, 80);
     else if (parameter_ == Parameter::Speed) profile_.speed = constrain(profile_.speed + delta, 1, scanMaxSpeed);
-    else profile_.settleMs = constrain(profile_.settleMs + delta * 50, 0, 2000);
+    else if (parameter_ == Parameter::Settle) profile_.settleMs = constrain(profile_.settleMs + delta * 50, 0, 2000);
+    else profile_.focusSteps = constrain(profile_.focusSteps + delta, 1, maxFocusSteps);
     calculateGrid(); saveProfile(); redraw();
 }
 
@@ -341,12 +361,13 @@ void ScanUi::calculateGrid() {
     const float strideY = profile_.frameY * (1.0F - profile_.overlap / 100.0F);
     columns_ = fabsf(sessionEndX_ - sessionStartX_) < 0.00001F ? 1 : static_cast<int>(ceilf(fabsf(sessionEndX_ - sessionStartX_) / strideX)) + 1;
     rows_ = fabsf(sessionEndY_ - sessionStartY_) < 0.00001F ? 1 : static_cast<int>(ceilf(fabsf(sessionEndY_ - sessionStartY_) / strideY)) + 1;
-    totalImages_ = columns_ * rows_;
+    totalImages_ = columns_ * rows_ * profile_.focusSteps;
 }
 
 bool ScanUi::readyToScan(const ScanMachineStatus& machine) const {
     return controlsAvailable(machine) &&
-        profile_.frameXSet && profile_.frameYSet && sessionStartSet_ && sessionEndSet_ && totalImages_ > 0;
+        profile_.frameXSet && profile_.frameYSet && (profile_.focusSteps == 1 || profile_.frameZSet) &&
+        sessionStartSet_ && sessionEndSet_ && totalImages_ > 0;
 }
 
 bool ScanUi::controlsAvailable(const ScanMachineStatus& machine) const {
@@ -357,12 +378,14 @@ void ScanUi::sendLine(const String& value) {
     String line = value + '\r'; controller_.write(reinterpret_cast<const uint8_t*>(line.c_str()), line.length()); controller_.flush();
 }
 
-void ScanUi::sendMove(float x, float y) {
-    sendLine("G90 G21 G1 X" + String(x, 4) + " Y" + String(y, 4) + " F" + String(profile_.speed));
+void ScanUi::sendMove(float x, float y, float z) {
+    sendLine("G90 G21 G1 X" + String(x, 4) + " Y" + String(y, 4) + " Z" + String(z, 4) + " F" + String(profile_.speed));
 }
 
-void ScanUi::targetForIndex(int index, float& x, float& y) const {
-    const int row = index / columns_; int column = index % columns_;
+void ScanUi::targetForIndex(int index, float& x, float& y, float& z) const {
+    const int xyIndex = index / profile_.focusSteps;
+    const int focusIndex = index % profile_.focusSteps;
+    const int row = xyIndex / columns_; int column = xyIndex % columns_;
     if (row & 1) column = columns_ - 1 - column;
     const float spanX = fabsf(sessionEndX_ - sessionStartX_);
     const float spanY = fabsf(sessionEndY_ - sessionStartY_);
@@ -372,12 +395,16 @@ void ScanUi::targetForIndex(int index, float& x, float& y) const {
     const float offsetY = min(spanY, row * strideY);
     x = sessionStartX_ + (sessionEndX_ >= sessionStartX_ ? offsetX : -offsetX);
     y = sessionStartY_ + (sessionEndY_ >= sessionStartY_ ? offsetY : -offsetY);
+    z = returnZ_;
+    if (profile_.focusSteps > 1) {
+        z += -profile_.frameZ * 0.5F + profile_.frameZ * focusIndex / (profile_.focusSteps - 1);
+    }
 }
 
 void ScanUi::startScan(const ScanMachineStatus& machine) {
     calculateGrid();
     if (!readyToScan(machine)) return;
-    returnX_ = machine.x; returnY_ = machine.y; currentIndex_ = 0; pauseRequested_ = false;
+    returnX_ = machine.x; returnY_ = machine.y; returnZ_ = machine.z; currentIndex_ = 0; pauseRequested_ = false;
     releaseTrigger(); phase_ = Phase::SendMove; phaseStartedAt_ = millis(); redraw();
 }
 
@@ -404,7 +431,7 @@ void ScanUi::startCameraTest(const ScanMachineStatus& machine) {
 void ScanUi::advanceScan() {
     ++currentIndex_;
     if (currentIndex_ >= totalImages_) {
-        if (profile_.returnToStart) { sendMove(returnX_, returnY_); phase_ = Phase::ReturnStart; moveObserved_ = false; phaseStartedAt_ = millis(); }
+        if (profile_.returnToStart) { sendMove(returnX_, returnY_, returnZ_); phase_ = Phase::ReturnStart; moveObserved_ = false; phaseStartedAt_ = millis(); }
         else phase_ = Phase::Done;
     } else phase_ = pauseRequested_ ? Phase::Paused : Phase::SendMove;
     redraw();
@@ -419,7 +446,7 @@ void ScanUi::service(const ScanMachineStatus& machine) {
     if (!machine.connected || machine.motion == ScanMotionState::Blocked) { stopScan(); return; }
     if (phase_ == Phase::Paused) return;
     if (phase_ == Phase::SendMove) {
-        float x, y; targetForIndex(currentIndex_, x, y); sendMove(x, y); moveObserved_ = false; phase_ = Phase::WaitMove; phaseStartedAt_ = now; redraw();
+        float x, y, z; targetForIndex(currentIndex_, x, y, z); sendMove(x, y, z); moveObserved_ = false; phase_ = Phase::WaitMove; phaseStartedAt_ = now; redraw();
     } else if (phase_ == Phase::WaitMove) {
         if (machine.motion == ScanMotionState::Moving) moveObserved_ = true;
         if (machine.motion == ScanMotionState::Idle && (moveObserved_ || now - phaseStartedAt_ > 350)) { phase_ = Phase::Settle; phaseStartedAt_ = now; redraw(); }
@@ -444,7 +471,10 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         return;
     }
     if (screen_ != Screen::Workflow && screen_ != Screen::SettingsMenu && inside(x, y, 62, 8, 58, 32)) {
-        calibrationASet_ = false; screen_ = Screen::SettingsMenu; redraw(); return;
+        calibrationASet_ = false;
+        screen_ = (screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY || screen_ == Screen::CalibrateZ)
+            ? Screen::FieldMenu : Screen::SettingsMenu;
+        redraw(); return;
     }
     if (screen_ == Screen::Workflow) {
         if (inside(x, y, 76, 62, 380, 58)) {
@@ -457,18 +487,24 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
             }
         } else if (inside(x, y, 76, 202, 380, 62)) startScan(machine);
     } else if (screen_ == Screen::SettingsMenu) {
-        if (inside(x, y, 68, 60, 190, 54)) { calibrationASet_ = false; screen_ = Screen::CalibrateX; redraw(); }
-        else if (inside(x, y, 274, 60, 190, 54)) openParameter(Parameter::Overlap);
-        else if (inside(x, y, 68, 126, 190, 54)) openParameter(Parameter::Speed);
-        else if (inside(x, y, 274, 126, 190, 54)) openParameter(Parameter::Settle);
-        else if (inside(x, y, 68, 192, 190, 54)) { screen_ = Screen::Camera; redraw(); }
-        else if (inside(x, y, 274, 192, 190, 54)) { screen_ = Screen::Resolution; redraw(); }
-        else if (inside(x, y, 68, 258, 396, 48)) { profile_.returnToStart = !profile_.returnToStart; saveProfile(); redraw(); }
-    } else if (screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY) {
-        const bool xAxis = screen_ == Screen::CalibrateX;
-        if (inside(x, y, 88, 112, 96, 96)) startJog(JogDirection::Negative, xAxis);
-        else if (inside(x, y, 348, 112, 96, 96)) startJog(JogDirection::Positive, xAxis);
-        else if (inside(x, y, 116, 232, 300, 56)) captureCalibration(machine, xAxis);
+        if (inside(x, y, 68, 54, 190, 46)) { screen_ = Screen::FieldMenu; redraw(); }
+        else if (inside(x, y, 274, 54, 190, 46)) openParameter(Parameter::Overlap);
+        else if (inside(x, y, 68, 108, 190, 46)) openParameter(Parameter::Speed);
+        else if (inside(x, y, 274, 108, 190, 46)) openParameter(Parameter::Settle);
+        else if (inside(x, y, 68, 162, 190, 46)) openParameter(Parameter::FocusSteps);
+        else if (inside(x, y, 274, 162, 190, 46)) { screen_ = Screen::Camera; redraw(); }
+        else if (inside(x, y, 68, 216, 190, 46)) { screen_ = Screen::Resolution; redraw(); }
+        else if (inside(x, y, 274, 216, 190, 46)) { profile_.returnToStart = !profile_.returnToStart; saveProfile(); redraw(); }
+    } else if (screen_ == Screen::FieldMenu) {
+        calibrationASet_ = false;
+        if (inside(x, y, 86, 62, 360, 58)) { screen_ = Screen::CalibrateX; redraw(); }
+        else if (inside(x, y, 86, 132, 360, 58)) { screen_ = Screen::CalibrateY; redraw(); }
+        else if (inside(x, y, 86, 202, 360, 58)) { screen_ = Screen::CalibrateZ; redraw(); }
+    } else if (screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY || screen_ == Screen::CalibrateZ) {
+        const char axis = screen_ == Screen::CalibrateX ? 'X' : (screen_ == Screen::CalibrateY ? 'Y' : 'Z');
+        if (inside(x, y, 88, 112, 96, 96)) startJog(JogDirection::Negative, axis);
+        else if (inside(x, y, 348, 112, 96, 96)) startJog(JogDirection::Positive, axis);
+        else if (inside(x, y, 116, 232, 300, 56)) captureCalibration(machine, axis);
     } else if (screen_ == Screen::Parameter) {
         if (inside(x, y, 130, 135, 271, 55)) { touchAction_ = TouchAction::Slider; updateParameterFromX(x); }
         else if (inside(x, y, 70, 210, 120, 70)) changeParameter(-1);

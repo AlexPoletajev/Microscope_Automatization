@@ -44,6 +44,7 @@ constexpr uint32_t statusRequestIntervalMs = 250;
 constexpr uint32_t statusTimeoutMs = 1000;
 constexpr uint32_t jogIntervalMs = 110;
 constexpr uint32_t jogHorizonMs = 190;
+constexpr uint32_t navigationDoubleTapMs = 500;
 constexpr float axisJogDistance = 1000.0F;
 constexpr uint8_t jogCancel = 0x85;
 
@@ -85,6 +86,9 @@ enum class MachineState { Unknown, Idle, Jog, Moving, Blocked };
 enum class ConnectionState { Offline, Ready, Blocked };
 
 Page currentPage = Page::Pad;
+Page pendingNavigationPage = Page::Pad;
+uint32_t pendingNavigationAt = 0;
+bool navigationTapPending = false;
 PadState padState;
 AxisDirection activeAxisDirection = AxisDirection::None;
 MachineState machineState = MachineState::Unknown;
@@ -96,8 +100,10 @@ bool receivedStatus = false;
 bool jogCommandActive = false;
 float workPositionX = 0.0F;
 float workPositionY = 0.0F;
+float workPositionZ = 0.0F;
 float workOffsetX = 0.0F;
 float workOffsetY = 0.0F;
+float workOffsetZ = 0.0F;
 bool positionValid = false;
 char statusFrame[160];
 size_t statusFrameLength = 0;
@@ -471,16 +477,18 @@ void parseStatusFrame() {
 
     float machineX = 0.0F;
     float machineY = 0.0F;
+    float machineZ = 0.0F;
     bool haveMachinePosition = false;
     while ((field = strtok_r(nullptr, "|", &save)) != nullptr) {
-        if (sscanf(field, "MPos:%f,%f", &machineX, &machineY) == 2) {
+        if (sscanf(field, "MPos:%f,%f,%f", &machineX, &machineY, &machineZ) == 3) {
             haveMachinePosition = true;
-        } else if (sscanf(field, "WPos:%f,%f", &workPositionX, &workPositionY) == 2) {
+        } else if (sscanf(field, "WPos:%f,%f,%f", &workPositionX, &workPositionY, &workPositionZ) == 3) {
             positionValid = true;
-        } else if (sscanf(field, "WCO:%f,%f", &workOffsetX, &workOffsetY) == 2) {
+        } else if (sscanf(field, "WCO:%f,%f,%f", &workOffsetX, &workOffsetY, &workOffsetZ) == 3) {
             if (haveMachinePosition) {
                 workPositionX = machineX - workOffsetX;
                 workPositionY = machineY - workOffsetY;
+                workPositionZ = machineZ - workOffsetZ;
                 positionValid = true;
             }
         }
@@ -488,6 +496,7 @@ void parseStatusFrame() {
     if (haveMachinePosition) {
         workPositionX = machineX - workOffsetX;
         workPositionY = machineY - workOffsetY;
+        workPositionZ = machineZ - workOffsetZ;
         positionValid = true;
     }
     receivedStatus = true;
@@ -526,6 +535,7 @@ ScanMachineStatus scanMachineStatus() {
     status.positionValid = positionValid;
     status.x = workPositionX;
     status.y = workPositionY;
+    status.z = workPositionZ;
     if (machineState == MachineState::Idle) status.motion = ScanMotionState::Idle;
     else if (machineState == MachineState::Moving || machineState == MachineState::Jog) status.motion = ScanMotionState::Moving;
     else if (machineState == MachineState::Blocked) status.motion = ScanMotionState::Blocked;
@@ -649,6 +659,22 @@ void showPage(Page page) {
     drawConnectionIndicator(true);
 }
 
+void requestPage(Page page) {
+    if (page == currentPage) {
+        navigationTapPending = false;
+        return;
+    }
+    const uint32_t now = millis();
+    if (navigationTapPending && pendingNavigationPage == page && now - pendingNavigationAt <= navigationDoubleTapMs) {
+        navigationTapPending = false;
+        showPage(page);
+        return;
+    }
+    pendingNavigationPage = page;
+    pendingNavigationAt = now;
+    navigationTapPending = true;
+}
+
 void updateAxisSpeed(int16_t screenX) {
     const int16_t constrainedX = constrain(screenX, axisSliderLeft, axisSliderRight);
     axisFeed = map(constrainedX, axisSliderLeft, axisSliderRight, axisPageMinFeed, axisPageMaxFeed);
@@ -716,19 +742,19 @@ void loop() {
         bool navigationTouch = false;
         if (touched && touchMode == TouchMode::None) {
             if (insidePadPageButton(screenX, screenY)) {
-                showPage(Page::Pad);
+                requestPage(Page::Pad);
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
             } else if (insideAxesPageButton(screenX, screenY)) {
-                showPage(Page::Axes);
+                requestPage(Page::Axes);
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
             } else if (insideScanPageButton(screenX, screenY)) {
-                showPage(Page::Scan);
+                requestPage(Page::Scan);
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
             } else if (insideSettingsPageButton(screenX, screenY)) {
-                showPage(Page::Settings);
+                requestPage(Page::Settings);
                 touchMode = TouchMode::Navigation;
                 navigationTouch = true;
             }
@@ -746,16 +772,16 @@ void loop() {
     if (touched) {
         if (touchMode == TouchMode::None) {
             if (insidePadPageButton(screenX, screenY)) {
-                showPage(Page::Pad);
+                requestPage(Page::Pad);
                 touchMode = TouchMode::Navigation;
             } else if (insideAxesPageButton(screenX, screenY)) {
-                showPage(Page::Axes);
+                requestPage(Page::Axes);
                 touchMode = TouchMode::Navigation;
             } else if (insideScanPageButton(screenX, screenY)) {
-                showPage(Page::Scan);
+                requestPage(Page::Scan);
                 touchMode = TouchMode::Navigation;
             } else if (insideSettingsPageButton(screenX, screenY)) {
-                showPage(Page::Settings);
+                requestPage(Page::Settings);
                 touchMode = TouchMode::Navigation;
             } else if (currentPage == Page::Pad) {
                 if (insidePad(screenX, screenY)) {

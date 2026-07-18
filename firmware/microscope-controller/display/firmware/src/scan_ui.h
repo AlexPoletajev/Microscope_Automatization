@@ -10,6 +10,7 @@ struct ScanMachineStatus {
     ScanMotionState motion = ScanMotionState::Unknown;
     float x = 0.0F;
     float y = 0.0F;
+    float z = 0.0F;
     bool positionValid = false;
 };
 
@@ -27,8 +28,8 @@ public:
     bool running() const;
 
 private:
-    enum class Screen { Workflow, SettingsMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
-    enum class Parameter { Overlap, Speed, Settle, ReturnToStart };
+    enum class Screen { Workflow, SettingsMenu, FieldMenu, CalibrateX, CalibrateY, CalibrateZ, Parameter, Camera, Resolution };
+    enum class Parameter { Overlap, Speed, Settle, FocusSteps };
     enum class TouchAction { None, Jog, Slider };
     enum class JogDirection { None, Negative, Positive };
     enum class Phase { Idle, SendMove, WaitMove, Settle, TriggerOn, TriggerOff, Paused, ReturnStart, Done, Error };
@@ -36,13 +37,16 @@ private:
     struct Profile {
         float frameX = 0.0F;
         float frameY = 0.0F;
+        float frameZ = 0.0F;
         int cameraWidth = 1920;
         int cameraHeight = 1080;
         int overlap = 15;
         int speed = 60;
         int settleMs = 300;
+        int focusSteps = 1;
         bool frameXSet = false;
         bool frameYSet = false;
+        bool frameZSet = false;
         bool cameraEnabled = false;
         bool returnToStart = true;
     };
@@ -62,7 +66,7 @@ private:
     bool triggerOutputActive_ = false;
     bool cameraTestActive_ = false;
     bool visible_ = false;
-    bool jogAxisX_ = true;
+    char jogAxis_ = 'X';
     uint32_t lastJogAt_ = 0;
     ScanMachineStatus machine_;
     float calibrationA_ = 0.0F;
@@ -79,6 +83,7 @@ private:
     int totalImages_ = 0;
     float returnX_ = 0.0F;
     float returnY_ = 0.0F;
+    float returnZ_ = 0.0F;
 
     void loadProfile();
     void saveProfile();
@@ -89,7 +94,8 @@ private:
     void drawWorkflow(const ScanMachineStatus* machine = nullptr);
     void drawProgress();
     void drawSettingsMenu();
-    void drawCalibration(bool xAxis);
+    void drawFieldMenu();
+    void drawCalibration(char axis);
     void drawParameter();
     void drawParameterControl();
     void drawCamera();
@@ -99,10 +105,10 @@ private:
     void onDrag(int16_t x);
     void onRelease();
     void openParameter(Parameter parameter);
-    void startJog(JogDirection direction, bool xAxis);
+    void startJog(JogDirection direction, char axis);
     void sendJogSegment();
     void stopJog();
-    void captureCalibration(const ScanMachineStatus& machine, bool xAxis);
+    void captureCalibration(const ScanMachineStatus& machine, char axis);
     void updateParameterFromX(int16_t x);
     void changeParameter(int delta);
     void calculateGrid();
@@ -114,7 +120,7 @@ private:
     void startCameraTest(const ScanMachineStatus& machine);
     void releaseTrigger();
     void sendLine(const String& line);
-    void sendMove(float x, float y);
-    void targetForIndex(int index, float& x, float& y) const;
+    void sendMove(float x, float y, float z);
+    void targetForIndex(int index, float& x, float& y, float& z) const;
     void advanceScan();
 };

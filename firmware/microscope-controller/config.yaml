@@ -1,6 +1,6 @@
 board: MKS DLC32 MAX V1.0
-name: Microscope Stage XY
-meta: Initial safe XY configuration without endstops
+name: Microscope Stage XYZ
+meta: Active XYZ microscope configuration without endstops
 
 stepping:
   engine: RMT
@@ -61,6 +61,23 @@ axes:
       stepstick:
         step_pin: gpio.7
         direction_pin: gpio.6
+        disable_pin: NO_PIN
+
+  z:
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 240.000
+    acceleration_mm_per_sec2: 10.000
+    max_travel_mm: 80.000
+    soft_limits: false
+    motor0:
+      limit_neg_pin: NO_PIN
+      limit_pos_pin: NO_PIN
+      limit_all_pin: NO_PIN
+      hard_limits: false
+      pulloff_mm: 0.500
+      stepstick:
+        step_pin: gpio.5
+        direction_pin: gpio.4
         disable_pin: NO_PIN
 
 control:

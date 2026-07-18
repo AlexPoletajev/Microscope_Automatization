@@ -50,8 +50,9 @@ the mainboard UART output and CH340 output remain electrically connected to the 
 The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a scan workflow and large settings
 pages. The calibrated field size, camera resolution, overlap, speed, settling time, camera enable state and return
 behavior are persisted in display NVS. Scan start and end positions deliberately live only for the current display
-session and are cleared by a restart. The scan executor follows an endpoint-inclusive serpentine XY path, keeps Z
-unchanged and provides progress, pause-at-next-frame and cancel controls. Each enabled camera capture pulses IO38
+session and are cleared by a restart. The scan executor follows an endpoint-inclusive serpentine XY path and can
+capture a configurable Z focus stack around the Z position present at scan start. It provides progress,
+pause-at-next-frame and cancel controls. Each enabled camera capture pulses IO38
 for a fixed 50 ms. It must not contain independent machine position state; all positions and motion states come
 from FluidNC.
 
