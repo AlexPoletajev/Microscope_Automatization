@@ -284,6 +284,7 @@ void ScanUi::startJog(JogDirection direction, bool xAxis) {
     jogStopping_ = false;
     jogDirection_ = direction;
     jogAxisX_ = xAxis;
+    jogIdleSince_ = 0;
     touchAction_ = TouchAction::Jog;
     sendJogSegment();
     drawAxisArrow(direction == JogDirection::Negative ? 136 : 396,
@@ -305,6 +306,7 @@ void ScanUi::stopJog() {
     controller_.write(jogCancel);
     jogDirection_ = JogDirection::None;
     jogStopping_ = true;
+    jogIdleSince_ = 0;
 }
 
 void ScanUi::captureCalibration(const ScanMachineStatus& machine, bool xAxis) {
@@ -452,11 +454,19 @@ void ScanUi::service(const ScanMachineStatus& machine) {
     machine_ = machine;
     controlsAvailable_ = controlsAvailable(machine_);
     if (touchAction_ == TouchAction::Jog && now - lastJogAt_ >= 150) sendJogSegment();
-    if (jogStopping_ && controlsAvailable_) {
-        jogStopping_ = false;
-        feedback_ = "";
+    if (jogStopping_) {
+        if (controlsAvailable_) {
+            if (jogIdleSince_ == 0) jogIdleSince_ = now;
+            if (now - jogIdleSince_ >= 350) {
+                jogStopping_ = false;
+                jogIdleSince_ = 0;
+                feedback_ = "";
+            }
+        } else {
+            jogIdleSince_ = 0;
+        }
     }
-    if (wasAvailable != controlsAvailable_ && phase_ == Phase::Idle && touchAction_ != TouchAction::Jog &&
+    if (wasAvailable != controlsAvailable_ && !jogStopping_ && phase_ == Phase::Idle && touchAction_ != TouchAction::Jog &&
         (screen_ == Screen::Workflow || screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY)) {
         if (controlsAvailable_) feedback_ = "";
         redraw();

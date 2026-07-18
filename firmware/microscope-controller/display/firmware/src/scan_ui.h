@@ -66,6 +66,7 @@ private:
     bool jogStopping_ = false;
     bool jogAxisX_ = true;
     uint32_t lastJogAt_ = 0;
+    uint32_t jogIdleSince_ = 0;
     ScanMachineStatus machine_;
     String feedback_;
     float calibrationA_ = 0.0F;
