@@ -145,13 +145,26 @@ void ScanUi::drawWorkflow(const ScanMachineStatus* machine) {
     drawHeader("SCAN");
     const ScanMachineStatus& status = machine == nullptr ? machine_ : *machine;
     const bool canCapture = controlsAvailable(status);
-    drawButton(76, 52, 380, 42, sessionStartSet_ ? "XY START NEU SETZEN" : "XY START SETZEN", sessionStartSet_, canCapture);
-    drawButton(76, 100, 380, 42, sessionEndSet_ ? "XY ENDE NEU SETZEN" : "XY ENDE SETZEN", sessionEndSet_, canCapture);
-    drawButton(76, 148, 380, 42, sessionFocusStartSet_ ? "Z START NEU SETZEN" : "Z START SETZEN", sessionFocusStartSet_, canCapture);
-    drawButton(76, 196, 380, 42, sessionFocusEndSet_ ? "Z ENDE NEU SETZEN" : "Z ENDE SETZEN", sessionFocusEndSet_, canCapture);
+    drawButton(76, 50, 380, 38, sessionStartSet_ ? "XY START NEU SETZEN" : "XY START SETZEN", sessionStartSet_, canCapture);
+    drawButton(76, 92, 380, 38, sessionEndSet_ ? "XY ENDE NEU SETZEN" : "XY ENDE SETZEN", sessionEndSet_, canCapture);
+    drawButton(76, 134, 380, 38, sessionFocusStartSet_ ? "Z START NEU SETZEN" : "Z START SETZEN", sessionFocusStartSet_, canCapture);
+    drawButton(76, 176, 380, 38, sessionFocusEndSet_ ? "Z ENDE NEU SETZEN" : "Z ENDE SETZEN", sessionFocusEndSet_, canCapture);
+    drawGridSummary(231);
     const bool ready = readyToScan(status);
-    const String scanLabel = totalImages_ > 0 ? "SCAN STARTEN  /  " + String(totalImages_) : "SCAN STARTEN";
-    drawButton(76, 248, 380, 60, scanLabel, false, ready);
+    drawButton(76, 250, 380, 58, "SCAN STARTEN", false, ready);
+}
+
+void ScanUi::drawGridSummary(int16_t y) {
+    const String xCount = columns_ > 0 ? String(columns_) : "--";
+    const String yCount = rows_ > 0 ? String(rows_) : "--";
+    const String total = totalImages_ > 0 ? String(totalImages_) : "--";
+    const String summary = "X: " + xCount + "   Y: " + yCount + "   Z: " + String(profile_.focusSteps) +
+        "   GESAMT: " + total;
+    display_.setTextDatum(MC_DATUM);
+    display_.setTextColor(totalImages_ > 0 ? text : muted, background);
+    display_.setFreeFont(&FreeSansBold9pt7b);
+    display_.drawString(summary, 266, y);
+    display_.setTextFont(1);
 }
 
 void ScanUi::drawProgress() {
@@ -162,10 +175,11 @@ void ScanUi::drawProgress() {
     drawUiText(display_, phaseLabel(static_cast<int>(phase_)), 266, 76, true);
     display_.setTextColor(text, background);
     drawUiText(display_, String(completed) + " / " + totalImages_, 266, 118, true);
-    display_.fillRoundRect(78, 164, 376, 14, 7, lineColor);
-    display_.drawRoundRect(77, 163, 378, 16, 8, text);
+    drawGridSummary(146);
+    display_.fillRoundRect(78, 174, 376, 14, 7, lineColor);
+    display_.drawRoundRect(77, 173, 378, 16, 8, text);
     const int16_t width = totalImages_ ? 376 * completed / totalImages_ : 0;
-    if (width) display_.fillRoundRect(78, 164, width, 14, 7, phase_ == Phase::Done ? green : cyan);
+    if (width) display_.fillRoundRect(78, 174, width, 14, 7, phase_ == Phase::Done ? green : cyan);
     if (phase_ == Phase::Done || phase_ == Phase::Error) {
         drawButton(156, 242, 220, 50, "SCHLIESSEN", phase_ == Phase::Done);
     } else if (phase_ == Phase::Recover) {
@@ -509,23 +523,23 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         redraw(); return;
     }
     if (screen_ == Screen::Workflow) {
-        if (inside(x, y, 76, 52, 380, 42)) {
+        if (inside(x, y, 76, 50, 380, 38)) {
             if (controlsAvailable(machine)) {
                 sessionStartX_ = machine.x; sessionStartY_ = machine.y; sessionStartSet_ = true; calculateGrid(); redraw();
             }
-        } else if (inside(x, y, 76, 100, 380, 42)) {
+        } else if (inside(x, y, 76, 92, 380, 38)) {
             if (controlsAvailable(machine)) {
                 sessionEndX_ = machine.x; sessionEndY_ = machine.y; sessionEndSet_ = true; calculateGrid(); redraw();
             }
-        } else if (inside(x, y, 76, 148, 380, 42)) {
+        } else if (inside(x, y, 76, 134, 380, 38)) {
             if (controlsAvailable(machine)) {
                 sessionFocusStartZ_ = machine.z; sessionFocusStartSet_ = true; redraw();
             }
-        } else if (inside(x, y, 76, 196, 380, 42)) {
+        } else if (inside(x, y, 76, 176, 380, 38)) {
             if (controlsAvailable(machine)) {
                 sessionFocusEndZ_ = machine.z; sessionFocusEndSet_ = true; redraw();
             }
-        } else if (inside(x, y, 76, 248, 380, 60)) startScan(machine);
+        } else if (inside(x, y, 76, 250, 380, 58)) startScan(machine);
     } else if (screen_ == Screen::SettingsMenu) {
         if (inside(x, y, 68, 54, 190, 46)) { screen_ = Screen::FieldMenu; redraw(); }
         else if (inside(x, y, 274, 54, 190, 46)) openParameter(Parameter::Overlap);

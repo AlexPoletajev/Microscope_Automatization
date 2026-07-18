@@ -54,7 +54,8 @@ behavior are persisted in display NVS. Scan start and end positions deliberately
 session and are cleared by a restart. When more than one focus step is selected, the Z start and end positions are
 also captured in the scan workflow and remain session-only. The scan executor follows an endpoint-inclusive
 serpentine XY path and distributes the configured focus steps evenly between those Z endpoints. It provides progress,
-pause-at-next-frame and cancel controls. Each enabled camera capture pulses IO38
+pause-at-next-frame and cancel controls. The workflow and progress view show the X-column, Y-row, Z-focus and total
+image counts so the acquisition grid can be reconstructed for stitching. Each enabled camera capture pulses IO38
 for a fixed 50 ms. It must not contain independent machine position state; all positions and motion states come
 from FluidNC.
 

@@ -100,6 +100,7 @@ private:
     void drawButton(int16_t x, int16_t y, int16_t width, int16_t height, const String& label, bool active = false, bool enabled = true);
     void drawWorkflow(const ScanMachineStatus* machine = nullptr);
     void drawProgress();
+    void drawGridSummary(int16_t y);
     void drawSettingsMenu();
     void drawFieldMenu();
     void drawCalibration(char axis);
