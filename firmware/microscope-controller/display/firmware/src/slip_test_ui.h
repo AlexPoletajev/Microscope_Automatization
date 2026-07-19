@@ -17,7 +17,7 @@ public:
     bool running() const;
 
 private:
-    enum class Screen { Menu, Workflow, Speed, Rounds, StepTest };
+    enum class Screen { Menu, Overview, Workflow, Speed, Rounds, StepTest, FrameTest, RangeTest };
     enum class Phase { Idle, SendMove, WaitMove, Done, Error, Recover };
     enum class TouchAction { None, Slider };
 
@@ -54,8 +54,9 @@ private:
     void drawButton(int16_t x, int16_t y, int16_t width, int16_t height, const String& label,
                     bool active = false, bool enabled = true);
     void drawMenu();
+    void drawOverview();
     void drawWorkflow();
-    void drawStepTest();
+    void drawDistanceTest();
     void drawProgress();
     void drawParameter();
     void drawParameterControl();
@@ -70,4 +71,5 @@ private:
     void stopTest();
     void closeResult();
     void sendMove(bool pointA);
+    float testDistance(char axis) const;
 };

@@ -7,7 +7,7 @@ namespace {
 constexpr int16_t left = 52;
 constexpr int16_t sliderLeft = 145;
 constexpr int16_t sliderRight = 386;
-constexpr int scanMaxSpeed = 600;
+constexpr int scanMaxSpeed = 1000;
 constexpr int maxFocusSteps = 20;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
@@ -468,11 +468,47 @@ float ScanUi::scanStep(char axis) const {
     return 0.0F;
 }
 
+float ScanUi::frameDistance(char axis) const {
+    if (axis == 'X' && profile_.frameXSet) return profile_.frameX;
+    if (axis == 'Y' && profile_.frameYSet) return profile_.frameY;
+    if (axis == 'Z' && sessionFocusStartSet_ && sessionFocusEndSet_)
+        return fabsf(sessionFocusEndZ_ - sessionFocusStartZ_);
+    return 0.0F;
+}
+
+float ScanUi::scanRange(char axis) const {
+    if (axis == 'X' && sessionStartSet_ && sessionEndSet_) return fabsf(sessionEndX_ - sessionStartX_);
+    if (axis == 'Y' && sessionStartSet_ && sessionEndSet_) return fabsf(sessionEndY_ - sessionStartY_);
+    if (axis == 'Z' && sessionFocusStartSet_ && sessionFocusEndSet_)
+        return fabsf(sessionFocusEndZ_ - sessionFocusStartZ_);
+    return 0.0F;
+}
+
+ScanOverview ScanUi::overview() const {
+    ScanOverview value;
+    value.frameX = profile_.frameXSet ? profile_.frameX : 0.0F;
+    value.frameY = profile_.frameYSet ? profile_.frameY : 0.0F;
+    value.rangeX = scanRange('X'); value.rangeY = scanRange('Y'); value.rangeZ = scanRange('Z');
+    value.stepX = scanStep('X'); value.stepY = scanStep('Y'); value.stepZ = scanStep('Z');
+    value.actualOverlapX = value.frameX > 0.00001F ? 100.0F * (1.0F - value.stepX / value.frameX) : 0.0F;
+    value.actualOverlapY = value.frameY > 0.00001F ? 100.0F * (1.0F - value.stepY / value.frameY) : 0.0F;
+    value.overlapMin = profile_.overlapMin; value.overlapMax = profile_.overlapMax;
+    value.columns = columns_; value.rows = rows_; value.focusSteps = profile_.focusSteps; value.totalImages = totalImages_;
+    value.speed = profile_.speed; value.settleMs = profile_.settleMs; value.cameraPulseMs = profile_.cameraPulseMs;
+    value.cameraWidth = profile_.cameraWidth; value.cameraHeight = profile_.cameraHeight;
+    value.uniformX = uniformX_; value.uniformY = uniformY_;
+    value.cameraEnabled = profile_.cameraEnabled; value.returnToStart = profile_.returnToStart;
+    return value;
+}
+
 bool ScanUi::moveScanStep(char axis, int direction, const ScanMachineStatus& machine) {
+    return moveTestDistance(axis, scanStep(axis), direction, machine);
+}
+
+bool ScanUi::moveTestDistance(char axis, float distance, int direction, const ScanMachineStatus& machine) {
     if (!controlsAvailable(machine)) return false;
-    const float step = scanStep(axis);
-    if (step <= 0.00001F || (axis != 'X' && axis != 'Y' && axis != 'Z')) return false;
-    sendLine("G91 G21 G1 " + String(axis) + String(direction < 0 ? -step : step, 4) + " F" + String(profile_.speed));
+    if (distance <= 0.00001F || (axis != 'X' && axis != 'Y' && axis != 'Z')) return false;
+    sendLine("G91 G21 G1 " + String(axis) + String(direction < 0 ? -distance : distance, 4) + " F" + String(profile_.speed));
     return true;
 }
 

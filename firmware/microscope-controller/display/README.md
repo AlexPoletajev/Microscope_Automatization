@@ -48,9 +48,9 @@ the mainboard UART output and CH340 output remain electrically connected to the 
 5. Add microscope views using the command contract in `protocol/stage-control.md`.
 
 The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a scan workflow, a repeatability/slip
-test and large settings pages. The calibrated field size, camera resolution, overlap range, speed, settling time,
-camera enable state, camera pulse length and return
-behavior are persisted in display NVS. Scan start and end positions deliberately live only for the current display
+test and large settings pages. The calibrated field size, camera resolution, overlap range, scan speed up to
+1000 mm/min, settling time, camera enable state, camera pulse length and return behavior are persisted in display
+NVS. Scan start and end positions deliberately live only for the current display
 session and are cleared by a restart. When more than one focus step is selected, the Z start and end positions are
 also captured in the scan workflow and remain session-only. The scan executor follows an endpoint-inclusive
 serpentine XY path and distributes the configured focus steps evenly between those Z endpoints. It provides progress,
@@ -58,14 +58,15 @@ pause-at-next-frame and cancel controls. The workflow and progress view show the
 image counts so the acquisition grid can be reconstructed for stitching. X and Y use an equal endpoint-inclusive
 stride whenever an integer division falls inside the configured overlap range. Otherwise only the final edge step
 is shortened and the grid summary marks that axis with `RAND`. Each enabled camera capture pulses IO38 once for
-the configured 5, 10, 20 or 50 ms. It must not contain independent machine position state; all positions and motion states come
-from FluidNC.
+the configured 5, 10, 20 or 50 ms. It must not contain independent machine position state; all positions and motion
+states come from FluidNC.
 
-The Tests page contains the slip test and a scan-step test. The scan-step test moves X or Y by the active raster
-stride and Z by the active focus-plane distance. The slip test captures two session-only XYZ points, including the
-focus Z position at each point. It moves to point
-A first and then performs the configured number of A-B-A rounds at the saved test speed, always ending at point A.
-Test speed and round count persist in display NVS; stopping the test aborts active motion.
+The Tests page contains a complete scan overview, scan-step, field-width, scan-range and slip tests. The overview
+shows field calibration, XYZ ranges and steps, requested and actual overlap, edge exceptions, raster dimensions,
+image total, speed, settling, camera pulse, resolution and return behavior. The distance tests move X/Y/Z by the
+corresponding complete or incremental scan distance. The slip test captures two session-only XYZ points, including
+the focus Z position at each point. It moves to A first and then performs the configured number of A-B-A rounds at
+the saved test speed, always ending at A. Test speed and round count persist in display NVS; stopping aborts motion.
 
 All touch-and-hold jog controls continuously repeat bounded motion segments while pressed. On touch release, the
 display repeats the realtime jog cancel command until FluidNC reports `Idle`, covering the XY pad, the XY/ZA arrows

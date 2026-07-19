@@ -14,6 +14,34 @@ struct ScanMachineStatus {
     bool positionValid = false;
 };
 
+struct ScanOverview {
+    float frameX = 0.0F;
+    float frameY = 0.0F;
+    float rangeX = 0.0F;
+    float rangeY = 0.0F;
+    float rangeZ = 0.0F;
+    float stepX = 0.0F;
+    float stepY = 0.0F;
+    float stepZ = 0.0F;
+    float actualOverlapX = 0.0F;
+    float actualOverlapY = 0.0F;
+    int overlapMin = 0;
+    int overlapMax = 0;
+    int columns = 0;
+    int rows = 0;
+    int focusSteps = 0;
+    int totalImages = 0;
+    int speed = 0;
+    int settleMs = 0;
+    int cameraPulseMs = 0;
+    int cameraWidth = 0;
+    int cameraHeight = 0;
+    bool uniformX = false;
+    bool uniformY = false;
+    bool cameraEnabled = false;
+    bool returnToStart = false;
+};
+
 class ScanUi {
 public:
     ScanUi(TFT_eSPI& display, HardwareSerial& controller);
@@ -27,7 +55,11 @@ public:
     void service(const ScanMachineStatus& machine);
     bool running() const;
     float scanStep(char axis) const;
+    float frameDistance(char axis) const;
+    float scanRange(char axis) const;
+    ScanOverview overview() const;
     bool moveScanStep(char axis, int direction, const ScanMachineStatus& machine);
+    bool moveTestDistance(char axis, float distance, int direction, const ScanMachineStatus& machine);
 
 private:
     enum class Screen { Workflow, SettingsMenu, OverlapMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
