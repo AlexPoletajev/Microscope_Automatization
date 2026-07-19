@@ -105,7 +105,7 @@ void ScanUi::loadProfile() {
     profile_.zSpeed = constrain(p.getInt("zSpeed", profile_.speed), 1, scanMaxZSpeed);
     profile_.settleMs = constrain((p.getInt("settle", 300) + 25) / 50 * 50, 0, 2000);
     profile_.focusSteps = constrain(p.getInt("focusN", 1), 1, maxFocusSteps);
-    profile_.cameraPulseMs = 5;
+    profile_.cameraPulseMs = 15;
     profile_.frameXSet = p.getBool("frameXok", false) && profile_.frameX > 0.00001F;
     profile_.frameYSet = p.getBool("frameYok", false) && profile_.frameY > 0.00001F;
     profile_.cameraEnabled = p.getBool("camera", p.getBool("trigger", false));
@@ -330,7 +330,7 @@ void ScanUi::drawCamera() {
     display_.setTextColor(profile_.cameraEnabled ? green : muted, background);
     drawUiText(display_, profile_.cameraEnabled ? "IO38 AKTIV" : "IO38 INAKTIV", 266, 100, true);
     drawButton(86, 132, 360, 48, profile_.cameraEnabled ? "KAMERA: AN" : "KAMERA: AUS", profile_.cameraEnabled);
-    drawButton(86, 190, 360, 48, "IMPULS FEST  5 ms", false, false);
+    drawButton(86, 190, 360, 48, "IMPULS FEST  15 ms", false, false);
     drawButton(86, 248, 360, 54, cameraTestActive_ ? "IMPULS AKTIV" : "TESTIMPULS", cameraTestActive_, profile_.cameraEnabled);
 }
 
@@ -672,8 +672,8 @@ void ScanUi::service(const ScanMachineStatus& machine) {
         }
         else advanceScan();
     } else if (phase_ == Phase::TriggerOn && now - phaseStartedAt_ >= static_cast<uint32_t>(profile_.cameraPulseMs)) {
-        releaseTrigger(); phase_ = Phase::TriggerOff; phaseStartedAt_ = now; redraw();
-    } else if (phase_ == Phase::TriggerOff && now - phaseStartedAt_ >= 30) advanceScan();
+        releaseTrigger(); phase_ = Phase::TriggerOff; phaseStartedAt_ = millis(); redraw();
+    } else if (phase_ == Phase::TriggerOff && now - phaseStartedAt_ >= 100) advanceScan();
     else if (phase_ == Phase::ReturnStart) {
         if (machine.motion == ScanMotionState::Moving) moveObserved_ = true;
         if (machine.motion == ScanMotionState::Idle && (moveObserved_ || now - phaseStartedAt_ > 350)) { phase_ = Phase::Done; redraw(); }
