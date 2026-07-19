@@ -154,7 +154,7 @@ float SlipTestUi::testDistance(char axis) const {
 
 void SlipTestUi::drawDistanceTest() {
     const char* title = screen_ == Screen::StepTest ? "SCAN-SCHRITTE" :
-        (screen_ == Screen::FrameTest ? "BILDFELDWEITEN" : "SCANBEREICH");
+        "BILDFELDWEITEN";
     drawHeader(title, true);
     const bool available = controlsAvailable(machine_);
     const char axes[] = {'X', 'Y', 'Z'};
@@ -169,6 +169,18 @@ void SlipTestUi::drawDistanceTest() {
         const String value = distance > 0.00001F ? String(distance, 4) + " mm" : "NICHT GESETZT";
         display_.drawString(String(axes[index]) + "  " + value, 266, rows[index] + 29);
         display_.setTextFont(1);
+    }
+}
+
+void SlipTestUi::drawRangeTest() {
+    drawHeader("SCANBEREICH", true);
+    const bool available = controlsAvailable(machine_);
+    const char axes[] = {'X', 'Y', 'Z'};
+    const int16_t rows[] = {58, 142, 226};
+    for (int index = 0; index < 3; ++index) {
+        const bool enabled = available && scanUi_.rangeEndpointAvailable(axes[index]);
+        drawButton(76, rows[index], 180, 58, String(axes[index]) + " START", false, enabled);
+        drawButton(276, rows[index], 180, 58, String(axes[index]) + " ENDE", false, enabled);
     }
 }
 
@@ -228,7 +240,8 @@ void SlipTestUi::draw() {
     else if (screen_ == Screen::Menu) drawMenu();
     else if (screen_ == Screen::Overview) drawOverview();
     else if (screen_ == Screen::Workflow) drawWorkflow();
-    else if (screen_ == Screen::StepTest || screen_ == Screen::FrameTest || screen_ == Screen::RangeTest) drawDistanceTest();
+    else if (screen_ == Screen::RangeTest) drawRangeTest();
+    else if (screen_ == Screen::StepTest || screen_ == Screen::FrameTest) drawDistanceTest();
     else drawParameter();
 }
 
@@ -367,7 +380,18 @@ void SlipTestUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine)
         else if (inside(x, y, 76, 148, 380, 42)) { screen_ = Screen::Speed; redraw(); }
         else if (inside(x, y, 76, 196, 380, 42)) { screen_ = Screen::Rounds; redraw(); }
         else if (inside(x, y, 76, 248, 380, 60)) startTest(machine);
-    } else if (screen_ == Screen::StepTest || screen_ == Screen::FrameTest || screen_ == Screen::RangeTest) {
+    } else if (screen_ == Screen::RangeTest) {
+        const char axes[] = {'X', 'Y', 'Z'};
+        const int16_t rows[] = {58, 142, 226};
+        for (int index = 0; index < 3; ++index) {
+            if (inside(x, y, 76, rows[index], 180, 58)) {
+                scanUi_.moveRangeEndpoint(axes[index], false, machine); redraw(); return;
+            }
+            if (inside(x, y, 276, rows[index], 180, 58)) {
+                scanUi_.moveRangeEndpoint(axes[index], true, machine); redraw(); return;
+            }
+        }
+    } else if (screen_ == Screen::StepTest || screen_ == Screen::FrameTest) {
         const char axes[] = {'X', 'Y', 'Z'};
         const int16_t rows[] = {58, 142, 226};
         for (int index = 0; index < 3; ++index) {

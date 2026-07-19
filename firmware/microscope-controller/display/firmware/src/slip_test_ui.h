@@ -57,6 +57,7 @@ private:
     void drawOverview();
     void drawWorkflow();
     void drawDistanceTest();
+    void drawRangeTest();
     void drawProgress();
     void drawParameter();
     void drawParameterControl();

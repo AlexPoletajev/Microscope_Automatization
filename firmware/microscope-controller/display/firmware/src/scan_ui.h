@@ -58,6 +58,8 @@ public:
     float frameDistance(char axis) const;
     float scanRange(char axis) const;
     ScanOverview overview() const;
+    bool rangeEndpointAvailable(char axis) const;
+    bool moveRangeEndpoint(char axis, bool endPoint, const ScanMachineStatus& machine);
     bool moveScanStep(char axis, int direction, const ScanMachineStatus& machine);
     bool moveTestDistance(char axis, float distance, int direction, const ScanMachineStatus& machine);
 

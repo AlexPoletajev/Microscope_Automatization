@@ -63,8 +63,9 @@ states come from FluidNC.
 
 The Tests page contains a complete scan overview, scan-step, field-width, scan-range and slip tests. The overview
 shows field calibration, XYZ ranges and steps, requested and actual overlap, edge exceptions, raster dimensions,
-image total, speed, settling, camera pulse, resolution and return behavior. The distance tests move X/Y/Z by the
-corresponding complete or incremental scan distance. The slip test captures two session-only XYZ points, including
+image total, speed, settling, camera pulse, resolution and return behavior. The step and field-width tests move
+X/Y/Z by the corresponding incremental or complete distance. The scan-range test provides six absolute controls
+for the X, Y and Z start/end coordinates. The slip test captures two session-only XYZ points, including
 the focus Z position at each point. It moves to A first and then performs the configured number of A-B-A rounds at
 the saved test speed, always ending at A. Test speed and round count persist in display NVS; stopping aborts motion.
 

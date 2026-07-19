@@ -501,6 +501,23 @@ ScanOverview ScanUi::overview() const {
     return value;
 }
 
+bool ScanUi::rangeEndpointAvailable(char axis) const {
+    if (axis == 'X' || axis == 'Y') return sessionStartSet_ && sessionEndSet_;
+    if (axis == 'Z') return sessionFocusStartSet_ && sessionFocusEndSet_;
+    return false;
+}
+
+bool ScanUi::moveRangeEndpoint(char axis, bool endPoint, const ScanMachineStatus& machine) {
+    if (!controlsAvailable(machine) || !rangeEndpointAvailable(axis)) return false;
+    float target = 0.0F;
+    if (axis == 'X') target = endPoint ? sessionEndX_ : sessionStartX_;
+    else if (axis == 'Y') target = endPoint ? sessionEndY_ : sessionStartY_;
+    else if (axis == 'Z') target = endPoint ? sessionFocusEndZ_ : sessionFocusStartZ_;
+    else return false;
+    sendLine("G90 G21 G1 " + String(axis) + String(target, 4) + " F" + String(profile_.speed));
+    return true;
+}
+
 bool ScanUi::moveScanStep(char axis, int direction, const ScanMachineStatus& machine) {
     return moveTestDistance(axis, scanStep(axis), direction, machine);
 }
