@@ -49,7 +49,7 @@ the mainboard UART output and CH340 output remain electrically connected to the 
 
 The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a scan workflow, a repeatability/slip
 test and large settings pages. The calibrated field size, camera resolution, overlap range, separate XY scan speed
-up to 1000 mm/min and Z scan speed up to 2400 mm/min, settling time, camera enable state, camera pulse length and
+up to 1000 mm/min and Z scan speed up to 6000 mm/min, settling time, camera enable state and
 return behavior are persisted in display
 NVS. Scan start and end positions deliberately live only for the current display
 session and are cleared by a restart. When more than one focus step is selected, the Z start and end positions are
@@ -59,7 +59,7 @@ pause-at-next-frame and cancel controls. The workflow and progress view show the
 image counts so the acquisition grid can be reconstructed for stitching. X and Y use an equal endpoint-inclusive
 stride whenever an integer division falls inside the configured overlap range. Otherwise only the final edge step
 is shortened and the grid summary marks that axis with `RAND`. Each enabled camera capture pulses IO38 once for
-the configured 5, 10, 20 or 50 ms. It must not contain independent machine position state; all positions and motion
+a fixed 5 ms. It must not contain independent machine position state; all positions and motion
 states come from FluidNC.
 
 Both manual XY control surfaces allow a displayed feed up to 600 mm/min. The ZA cross control retains the configured

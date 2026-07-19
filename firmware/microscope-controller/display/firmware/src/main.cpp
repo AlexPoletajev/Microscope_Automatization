@@ -46,7 +46,7 @@ constexpr uint32_t statusRequestIntervalMs = 250;
 constexpr uint32_t statusTimeoutMs = 1000;
 constexpr uint32_t jogIntervalMs = 110;
 constexpr uint32_t jogHorizonMs = 190;
-constexpr uint32_t axisJogSegmentMs = 100;
+constexpr uint32_t axisJogSegmentMs = 60;
 constexpr uint32_t jogCancelRepeatMs = 50;
 constexpr uint32_t jogCancelGuardMs = 250;
 constexpr uint32_t navigationDoubleTapMs = 500;
@@ -868,9 +868,9 @@ void loop() {
             cancelJog();
             releasePad();
         } else if (touchMode == TouchMode::AxisJog) {
-            cancelJog();
             drawAxisDirection(activeAxisDirection, false);
             activeAxisDirection = AxisDirection::None;
+            cancelJog();
         }
         touchMode = TouchMode::None;
     }

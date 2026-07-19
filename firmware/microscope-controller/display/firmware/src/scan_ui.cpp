@@ -8,7 +8,7 @@ constexpr int16_t left = 52;
 constexpr int16_t sliderLeft = 145;
 constexpr int16_t sliderRight = 386;
 constexpr int scanMaxSpeed = 1000;
-constexpr int scanMaxZSpeed = 2400;
+constexpr int scanMaxZSpeed = 6000;
 constexpr int maxFocusSteps = 20;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
@@ -105,7 +105,7 @@ void ScanUi::loadProfile() {
     profile_.zSpeed = constrain(p.getInt("zSpeed", profile_.speed), 1, scanMaxZSpeed);
     profile_.settleMs = constrain((p.getInt("settle", 300) + 25) / 50 * 50, 0, 2000);
     profile_.focusSteps = constrain(p.getInt("focusN", 1), 1, maxFocusSteps);
-    profile_.cameraPulseMs = constrain(p.getInt("camPulse", 10), 5, 50);
+    profile_.cameraPulseMs = 5;
     profile_.frameXSet = p.getBool("frameXok", false) && profile_.frameX > 0.00001F;
     profile_.frameYSet = p.getBool("frameYok", false) && profile_.frameY > 0.00001F;
     profile_.cameraEnabled = p.getBool("camera", p.getBool("trigger", false));
@@ -330,7 +330,7 @@ void ScanUi::drawCamera() {
     display_.setTextColor(profile_.cameraEnabled ? green : muted, background);
     drawUiText(display_, profile_.cameraEnabled ? "IO38 AKTIV" : "IO38 INAKTIV", 266, 100, true);
     drawButton(86, 132, 360, 48, profile_.cameraEnabled ? "KAMERA: AN" : "KAMERA: AUS", profile_.cameraEnabled);
-    drawButton(86, 190, 360, 48, "IMPULS  " + String(profile_.cameraPulseMs) + " ms");
+    drawButton(86, 190, 360, 48, "IMPULS FEST  5 ms", false, false);
     drawButton(86, 248, 360, 54, cameraTestActive_ ? "IMPULS AKTIV" : "TESTIMPULS", cameraTestActive_, profile_.cameraEnabled);
 }
 
@@ -738,13 +738,7 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         else if (inside(x, y, 342, 210, 120, 70)) changeParameter(1);
     } else if (screen_ == Screen::Camera) {
         if (inside(x, y, 86, 132, 360, 48)) { profile_.cameraEnabled = !profile_.cameraEnabled; if (!profile_.cameraEnabled) releaseTrigger(); saveProfile(); redraw(); }
-        else if (inside(x, y, 86, 190, 360, 48)) {
-            if (profile_.cameraPulseMs < 10) profile_.cameraPulseMs = 10;
-            else if (profile_.cameraPulseMs < 20) profile_.cameraPulseMs = 20;
-            else if (profile_.cameraPulseMs < 50) profile_.cameraPulseMs = 50;
-            else profile_.cameraPulseMs = 5;
-            saveProfile(); redraw();
-        } else if (inside(x, y, 86, 248, 360, 54)) startCameraTest(machine);
+        else if (inside(x, y, 86, 248, 360, 54)) startCameraTest(machine);
     } else if (screen_ == Screen::Resolution) {
         if (inside(x, y, 86, 70, 360, 56)) { profile_.cameraWidth = 1920; profile_.cameraHeight = 1080; }
         else if (inside(x, y, 86, 142, 360, 56)) { profile_.cameraWidth = 3840; profile_.cameraHeight = 2160; }

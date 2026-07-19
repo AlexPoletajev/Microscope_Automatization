@@ -82,7 +82,7 @@ private:
         int zSpeed = 60;
         int settleMs = 300;
         int focusSteps = 1;
-        int cameraPulseMs = 10;
+        int cameraPulseMs = 5;
         bool frameXSet = false;
         bool frameYSet = false;
         bool cameraEnabled = false;
