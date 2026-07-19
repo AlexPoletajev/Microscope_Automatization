@@ -62,6 +62,9 @@ is shortened and the grid summary marks that axis with `RAND`. Each enabled came
 the configured 5, 10, 20 or 50 ms. It must not contain independent machine position state; all positions and motion
 states come from FluidNC.
 
+Both manual XY control surfaces allow a displayed feed up to 600 mm/min. The ZA cross control retains the configured
+10:1 Z translation multiplier shown below its speed slider.
+
 The Tests page contains a complete scan overview, scan-step, field-width, scan-range and slip tests. The overview
 shows field calibration, XYZ ranges and steps, requested and actual overlap, edge exceptions, raster dimensions,
 image total, separate XY/Z speeds, settling, camera pulse, resolution and return behavior. The step and field-width tests move
