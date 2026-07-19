@@ -59,7 +59,8 @@ pause-at-next-frame and cancel controls. The workflow and progress view show the
 image counts so the acquisition grid can be reconstructed for stitching. X and Y use an equal endpoint-inclusive
 stride whenever an integer division falls inside the configured overlap range. Otherwise only the final edge step
 is shortened and the grid summary marks that axis with `RAND`. Each enabled camera capture pulses IO38 once for
-a fixed 5 ms. It must not contain independent machine position state; all positions and motion
+a fixed 5 ms. No display redraw is performed while the trigger is high, so rendering cannot extend the electrical
+pulse. It must not contain independent machine position state; all positions and motion
 states come from FluidNC.
 
 Both manual XY control surfaces allow a displayed feed up to 600 mm/min. The ZA cross control retains the configured

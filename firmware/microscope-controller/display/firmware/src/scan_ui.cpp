@@ -611,7 +611,10 @@ void ScanUi::togglePause() {
 void ScanUi::startCameraTest(const ScanMachineStatus& machine) {
     if (!profile_.cameraEnabled || !machine.connected) return;
     if (cameraTestActive_) return;
-    sendLine("M64 P0"); triggerOutputActive_ = true; cameraTestActive_ = true; phaseStartedAt_ = millis(); redraw();
+    sendLine("M64 P0");
+    triggerOutputActive_ = true;
+    cameraTestActive_ = true;
+    phaseStartedAt_ = millis();
 }
 
 void ScanUi::advanceScan() {
@@ -661,7 +664,12 @@ void ScanUi::service(const ScanMachineStatus& machine) {
         if (machine.motion == ScanMotionState::Moving) moveObserved_ = true;
         if (machine.motion == ScanMotionState::Idle && (moveObserved_ || now - phaseStartedAt_ > 350)) { phase_ = Phase::Settle; phaseStartedAt_ = now; redraw(); }
     } else if (phase_ == Phase::Settle && now - phaseStartedAt_ >= static_cast<uint32_t>(profile_.settleMs)) {
-        if (profile_.cameraEnabled) { sendLine("M64 P0"); triggerOutputActive_ = true; phase_ = Phase::TriggerOn; phaseStartedAt_ = now; redraw(); }
+        if (profile_.cameraEnabled) {
+            sendLine("M64 P0");
+            triggerOutputActive_ = true;
+            phase_ = Phase::TriggerOn;
+            phaseStartedAt_ = millis();
+        }
         else advanceScan();
     } else if (phase_ == Phase::TriggerOn && now - phaseStartedAt_ >= static_cast<uint32_t>(profile_.cameraPulseMs)) {
         releaseTrigger(); phase_ = Phase::TriggerOff; phaseStartedAt_ = now; redraw();
