@@ -26,10 +26,12 @@ public:
     void handleTouch(bool touched, int16_t x, int16_t y, const ScanMachineStatus& machine);
     void service(const ScanMachineStatus& machine);
     bool running() const;
+    float scanStep(char axis) const;
+    bool moveScanStep(char axis, int direction, const ScanMachineStatus& machine);
 
 private:
-    enum class Screen { Workflow, SettingsMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
-    enum class Parameter { Overlap, Speed, Settle, FocusSteps };
+    enum class Screen { Workflow, SettingsMenu, OverlapMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
+    enum class Parameter { OverlapMin, OverlapMax, Speed, Settle, FocusSteps };
     enum class TouchAction { None, Jog, Slider };
     enum class JogDirection { None, Negative, Positive };
     enum class Phase { Idle, SendMove, WaitMove, Settle, TriggerOn, TriggerOff, Paused, ReturnStart, Done, Error, Recover };
@@ -39,10 +41,12 @@ private:
         float frameY = 0.0F;
         int cameraWidth = 1920;
         int cameraHeight = 1080;
-        int overlap = 15;
+        int overlapMin = 10;
+        int overlapMax = 20;
         int speed = 60;
         int settleMs = 300;
         int focusSteps = 1;
+        int cameraPulseMs = 10;
         bool frameXSet = false;
         bool frameYSet = false;
         bool cameraEnabled = false;
@@ -53,7 +57,7 @@ private:
     HardwareSerial& controller_;
     Profile profile_;
     Screen screen_ = Screen::Workflow;
-    Parameter parameter_ = Parameter::Overlap;
+    Parameter parameter_ = Parameter::OverlapMin;
     TouchAction touchAction_ = TouchAction::None;
     JogDirection jogDirection_ = JogDirection::None;
     Phase phase_ = Phase::Idle;
@@ -88,6 +92,10 @@ private:
     int rows_ = 0;
     int currentIndex_ = 0;
     int totalImages_ = 0;
+    float strideX_ = 0.0F;
+    float strideY_ = 0.0F;
+    bool uniformX_ = false;
+    bool uniformY_ = false;
     float returnX_ = 0.0F;
     float returnY_ = 0.0F;
     float returnZ_ = 0.0F;
@@ -102,6 +110,7 @@ private:
     void drawProgress();
     void drawGridSummary(int16_t y);
     void drawSettingsMenu();
+    void drawOverlapMenu();
     void drawFieldMenu();
     void drawCalibration(char axis);
     void drawParameter();

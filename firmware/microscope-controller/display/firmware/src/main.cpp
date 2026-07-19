@@ -12,7 +12,7 @@ namespace {
 TFT_eSPI display;
 HardwareSerial controllerSerial(2);
 ScanUi scanUi(display, controllerSerial);
-SlipTestUi slipTestUi(display, controllerSerial);
+SlipTestUi slipTestUi(display, controllerSerial, scanUi);
 
 constexpr int touchSda = 0;
 constexpr int touchScl = 4;

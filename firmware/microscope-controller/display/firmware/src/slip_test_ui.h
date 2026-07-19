@@ -7,7 +7,7 @@
 
 class SlipTestUi {
 public:
-    SlipTestUi(TFT_eSPI& display, HardwareSerial& controller);
+    SlipTestUi(TFT_eSPI& display, HardwareSerial& controller, ScanUi& scanUi);
 
     void begin();
     void show();
@@ -17,13 +17,14 @@ public:
     bool running() const;
 
 private:
-    enum class Screen { Workflow, Speed, Rounds };
+    enum class Screen { Menu, Workflow, Speed, Rounds, StepTest };
     enum class Phase { Idle, SendMove, WaitMove, Done, Error, Recover };
     enum class TouchAction { None, Slider };
 
     TFT_eSPI& display_;
     HardwareSerial& controller_;
-    Screen screen_ = Screen::Workflow;
+    ScanUi& scanUi_;
+    Screen screen_ = Screen::Menu;
     Phase phase_ = Phase::Idle;
     TouchAction touchAction_ = TouchAction::None;
     ScanMachineStatus machine_;
@@ -52,7 +53,9 @@ private:
     void drawHeader(const char* title, bool back = false);
     void drawButton(int16_t x, int16_t y, int16_t width, int16_t height, const String& label,
                     bool active = false, bool enabled = true);
+    void drawMenu();
     void drawWorkflow();
+    void drawStepTest();
     void drawProgress();
     void drawParameter();
     void drawParameterControl();

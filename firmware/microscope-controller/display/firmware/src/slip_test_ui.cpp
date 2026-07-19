@@ -25,8 +25,8 @@ void drawUiText(TFT_eSPI& display, const String& value, int16_t x, int16_t y, bo
 }
 }  // namespace
 
-SlipTestUi::SlipTestUi(TFT_eSPI& display, HardwareSerial& controller)
-    : display_(display), controller_(controller) {}
+SlipTestUi::SlipTestUi(TFT_eSPI& display, HardwareSerial& controller, ScanUi& scanUi)
+    : display_(display), controller_(controller), scanUi_(scanUi) {}
 
 void SlipTestUi::begin() {
     background = display_.color565(4, 6, 8);
@@ -60,7 +60,7 @@ void SlipTestUi::saveSettings() {
 void SlipTestUi::show() {
     if (running()) return;
     visible_ = true;
-    screen_ = Screen::Workflow;
+    screen_ = Screen::Menu;
     draw();
 }
 
@@ -94,7 +94,7 @@ void SlipTestUi::drawButton(int16_t x, int16_t y, int16_t width, int16_t height,
 }
 
 void SlipTestUi::drawWorkflow() {
-    drawHeader("SCHLUPFTEST");
+    drawHeader("SCHLUPFTEST", true);
     const bool available = controlsAvailable(machine_);
     drawButton(76, 52, 380, 42, pointASet_ ? "PUNKT A + Z NEU SETZEN" : "PUNKT A + Z SETZEN",
                pointASet_, available);
@@ -103,6 +103,30 @@ void SlipTestUi::drawWorkflow() {
     drawButton(76, 148, 380, 42, "TEMPO  " + String(speed_) + " mm/min");
     drawButton(76, 196, 380, 42, "RUNDEN  " + String(rounds_));
     drawButton(76, 248, 380, 60, "TEST STARTEN", false, available && pointASet_ && pointBSet_);
+}
+
+void SlipTestUi::drawMenu() {
+    drawHeader("TESTS");
+    drawButton(86, 82, 360, 76, "SCHLUPFTEST");
+    drawButton(86, 184, 360, 76, "SCAN-SCHRITTE");
+}
+
+void SlipTestUi::drawStepTest() {
+    drawHeader("SCAN-SCHRITTE", true);
+    const bool available = controlsAvailable(machine_);
+    const char axes[] = {'X', 'Y', 'Z'};
+    const int16_t rows[] = {58, 142, 226};
+    for (int index = 0; index < 3; ++index) {
+        const float step = scanUi_.scanStep(axes[index]);
+        drawButton(76, rows[index], 82, 58, "-", false, available && step > 0.00001F);
+        drawButton(374, rows[index], 82, 58, "+", false, available && step > 0.00001F);
+        display_.setTextDatum(MC_DATUM);
+        display_.setTextColor(step > 0.00001F ? text : muted, background);
+        display_.setFreeFont(&FreeSansBold12pt7b);
+        const String value = step > 0.00001F ? String(step, 4) + " mm" : "NICHT GESETZT";
+        display_.drawString(String(axes[index]) + "  " + value, 266, rows[index] + 29);
+        display_.setTextFont(1);
+    }
 }
 
 void SlipTestUi::drawProgress() {
@@ -158,7 +182,9 @@ void SlipTestUi::draw() {
     if (!visible_) return;
     display_.fillRect(left, 0, 480 - left, 320, background);
     if (phase_ != Phase::Idle) drawProgress();
+    else if (screen_ == Screen::Menu) drawMenu();
     else if (screen_ == Screen::Workflow) drawWorkflow();
+    else if (screen_ == Screen::StepTest) drawStepTest();
     else drawParameter();
 }
 
@@ -279,18 +305,32 @@ void SlipTestUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine)
                  inside(x, y, 156, 236, 220, 56)) stopTest();
         return;
     }
-    if (screen_ != Screen::Workflow && inside(x, y, 62, 8, 58, 32)) {
+    if (screen_ != Screen::Menu && inside(x, y, 62, 8, 58, 32)) {
         saveSettings();
-        screen_ = Screen::Workflow;
+        screen_ = (screen_ == Screen::Speed || screen_ == Screen::Rounds) ? Screen::Workflow : Screen::Menu;
         redraw();
         return;
     }
-    if (screen_ == Screen::Workflow) {
+    if (screen_ == Screen::Menu) {
+        if (inside(x, y, 86, 82, 360, 76)) { screen_ = Screen::Workflow; redraw(); }
+        else if (inside(x, y, 86, 184, 360, 76)) { screen_ = Screen::StepTest; redraw(); }
+    } else if (screen_ == Screen::Workflow) {
         if (inside(x, y, 76, 52, 380, 42)) capturePoint(true, machine);
         else if (inside(x, y, 76, 100, 380, 42)) capturePoint(false, machine);
         else if (inside(x, y, 76, 148, 380, 42)) { screen_ = Screen::Speed; redraw(); }
         else if (inside(x, y, 76, 196, 380, 42)) { screen_ = Screen::Rounds; redraw(); }
         else if (inside(x, y, 76, 248, 380, 60)) startTest(machine);
+    } else if (screen_ == Screen::StepTest) {
+        const char axes[] = {'X', 'Y', 'Z'};
+        const int16_t rows[] = {58, 142, 226};
+        for (int index = 0; index < 3; ++index) {
+            if (inside(x, y, 76, rows[index], 82, 58)) {
+                scanUi_.moveScanStep(axes[index], -1, machine); redraw(); return;
+            }
+            if (inside(x, y, 374, rows[index], 82, 58)) {
+                scanUi_.moveScanStep(axes[index], 1, machine); redraw(); return;
+            }
+        }
     } else if (inside(x, y, 130, 135, 271, 55)) {
         touchAction_ = TouchAction::Slider;
         updateParameterFromX(x);

@@ -48,18 +48,22 @@ the mainboard UART output and CH340 output remain electrically connected to the 
 5. Add microscope views using the command contract in `protocol/stage-control.md`.
 
 The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a scan workflow, a repeatability/slip
-test and large settings pages. The calibrated field size, camera resolution, overlap, speed, settling time, camera
-enable state and return
+test and large settings pages. The calibrated field size, camera resolution, overlap range, speed, settling time,
+camera enable state, camera pulse length and return
 behavior are persisted in display NVS. Scan start and end positions deliberately live only for the current display
 session and are cleared by a restart. When more than one focus step is selected, the Z start and end positions are
 also captured in the scan workflow and remain session-only. The scan executor follows an endpoint-inclusive
 serpentine XY path and distributes the configured focus steps evenly between those Z endpoints. It provides progress,
 pause-at-next-frame and cancel controls. The workflow and progress view show the X-column, Y-row, Z-focus and total
-image counts so the acquisition grid can be reconstructed for stitching. Each enabled camera capture pulses IO38
-for a fixed 50 ms. It must not contain independent machine position state; all positions and motion states come
+image counts so the acquisition grid can be reconstructed for stitching. X and Y use an equal endpoint-inclusive
+stride whenever an integer division falls inside the configured overlap range. Otherwise only the final edge step
+is shortened and the grid summary marks that axis with `RAND`. Each enabled camera capture pulses IO38 once for
+the configured 5, 10, 20 or 50 ms. It must not contain independent machine position state; all positions and motion states come
 from FluidNC.
 
-The slip test captures two session-only XYZ points, including the focus Z position at each point. It moves to point
+The Tests page contains the slip test and a scan-step test. The scan-step test moves X or Y by the active raster
+stride and Z by the active focus-plane distance. The slip test captures two session-only XYZ points, including the
+focus Z position at each point. It moves to point
 A first and then performs the configured number of A-B-A rounds at the saved test speed, always ending at point A.
 Test speed and round count persist in display NVS; stopping the test aborts active motion.
 
