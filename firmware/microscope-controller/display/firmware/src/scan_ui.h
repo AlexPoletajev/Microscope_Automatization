@@ -32,6 +32,7 @@ struct ScanOverview {
     int focusSteps = 0;
     int totalImages = 0;
     int speed = 0;
+    int zSpeed = 0;
     int settleMs = 0;
     int cameraPulseMs = 0;
     int cameraWidth = 0;
@@ -64,8 +65,8 @@ public:
     bool moveTestDistance(char axis, float distance, int direction, const ScanMachineStatus& machine);
 
 private:
-    enum class Screen { Workflow, SettingsMenu, OverlapMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
-    enum class Parameter { OverlapMin, OverlapMax, Speed, Settle, FocusSteps };
+    enum class Screen { Workflow, SettingsMenu, OverlapMenu, SpeedMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
+    enum class Parameter { OverlapMin, OverlapMax, Speed, ZSpeed, Settle, FocusSteps };
     enum class TouchAction { None, Jog, Slider };
     enum class JogDirection { None, Negative, Positive };
     enum class Phase { Idle, SendMove, WaitMove, Settle, TriggerOn, TriggerOff, Paused, ReturnStart, Done, Error, Recover };
@@ -78,6 +79,7 @@ private:
         int overlapMin = 10;
         int overlapMax = 20;
         int speed = 60;
+        int zSpeed = 60;
         int settleMs = 300;
         int focusSteps = 1;
         int cameraPulseMs = 10;
@@ -145,6 +147,7 @@ private:
     void drawGridSummary(int16_t y);
     void drawSettingsMenu();
     void drawOverlapMenu();
+    void drawSpeedMenu();
     void drawFieldMenu();
     void drawCalibration(char axis);
     void drawParameter();

@@ -96,22 +96,20 @@ void SlipTestUi::drawButton(int16_t x, int16_t y, int16_t width, int16_t height,
 void SlipTestUi::drawWorkflow() {
     drawHeader("SCHLUPFTEST", true);
     const bool available = controlsAvailable(machine_);
-    drawButton(76, 52, 380, 42, pointASet_ ? "PUNKT A + Z NEU SETZEN" : "PUNKT A + Z SETZEN",
-               pointASet_, available);
-    drawButton(76, 100, 380, 42, pointBSet_ ? "PUNKT B + Z NEU SETZEN" : "PUNKT B + Z SETZEN",
-               pointBSet_, available);
-    drawButton(76, 148, 380, 42, "TEMPO  " + String(speed_) + " mm/min");
-    drawButton(76, 196, 380, 42, "RUNDEN  " + String(rounds_));
-    drawButton(76, 248, 380, 60, "TEST STARTEN", false, available && pointASet_ && pointBSet_);
+    drawButton(66, 54, 190, 72, "PUNKT A + Z", pointASet_, available);
+    drawButton(276, 54, 190, 72, "PUNKT B + Z", pointBSet_, available);
+    drawButton(66, 136, 190, 72, "TEMPO  " + String(speed_));
+    drawButton(276, 136, 190, 72, "RUNDEN  " + String(rounds_));
+    drawButton(116, 228, 300, 72, "TEST STARTEN", false, available && pointASet_ && pointBSet_);
 }
 
 void SlipTestUi::drawMenu() {
     drawHeader("TESTS");
-    drawButton(86, 52, 360, 42, "SCAN-UEBERSICHT");
-    drawButton(86, 102, 360, 42, "SCAN-SCHRITTE");
-    drawButton(86, 152, 360, 42, "BILDFELDWEITEN");
-    drawButton(86, 202, 360, 42, "SCANBEREICH");
-    drawButton(86, 252, 360, 42, "SCHLUPFTEST");
+    drawButton(66, 54, 190, 72, "UEBERSICHT");
+    drawButton(276, 54, 190, 72, "SCAN-SCHRITTE");
+    drawButton(66, 136, 190, 72, "BILDFELD");
+    drawButton(276, 136, 190, 72, "SCANBEREICH");
+    drawButton(116, 218, 300, 80, "SCHLUPFTEST");
 }
 
 void SlipTestUi::drawOverview() {
@@ -133,15 +131,16 @@ void SlipTestUi::drawOverview() {
         "SCHRITT  X " + String(value.stepX, 3) + "  Y " + String(value.stepY, 3) + "  Z " + String(value.stepZ, 3),
         "RASTER  X " + String(value.columns) + "  Y " + String(value.rows) + "  Z " + String(value.focusSteps) +
             "  = " + String(value.totalImages),
-        "TEMPO " + String(value.speed) + " mm/min   RUHE " + String(value.settleMs) + " ms",
-        "KAMERA " + String(value.cameraEnabled ? "AN " : "AUS ") + String(value.cameraPulseMs) + " ms",
+        "TEMPO XY " + String(value.speed) + "  Z " + String(value.zSpeed) + " mm/min",
+        "RUHE " + String(value.settleMs) + " ms   KAMERA " + String(value.cameraEnabled ? "AN" : "AUS"),
+        "IMPULS " + String(value.cameraPulseMs) + " ms",
         "AUFLOESUNG " + String(value.cameraWidth) + "x" + String(value.cameraHeight) +
             "   RUECK " + String(value.returnToStart ? "AN" : "AUS")
     };
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(text, background);
     display_.setFreeFont(&FreeSansBold9pt7b);
-    for (int index = 0; index < 10; ++index) display_.drawString(lines[index], 266, 56 + index * 26);
+    for (int index = 0; index < 11; ++index) display_.drawString(lines[index], 266, 54 + index * 24);
     display_.setTextFont(1);
 }
 
@@ -369,17 +368,17 @@ void SlipTestUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine)
         return;
     }
     if (screen_ == Screen::Menu) {
-        if (inside(x, y, 86, 52, 360, 42)) { screen_ = Screen::Overview; redraw(); }
-        else if (inside(x, y, 86, 102, 360, 42)) { screen_ = Screen::StepTest; redraw(); }
-        else if (inside(x, y, 86, 152, 360, 42)) { screen_ = Screen::FrameTest; redraw(); }
-        else if (inside(x, y, 86, 202, 360, 42)) { screen_ = Screen::RangeTest; redraw(); }
-        else if (inside(x, y, 86, 252, 360, 42)) { screen_ = Screen::Workflow; redraw(); }
+        if (inside(x, y, 66, 54, 190, 72)) { screen_ = Screen::Overview; redraw(); }
+        else if (inside(x, y, 276, 54, 190, 72)) { screen_ = Screen::StepTest; redraw(); }
+        else if (inside(x, y, 66, 136, 190, 72)) { screen_ = Screen::FrameTest; redraw(); }
+        else if (inside(x, y, 276, 136, 190, 72)) { screen_ = Screen::RangeTest; redraw(); }
+        else if (inside(x, y, 116, 218, 300, 80)) { screen_ = Screen::Workflow; redraw(); }
     } else if (screen_ == Screen::Workflow) {
-        if (inside(x, y, 76, 52, 380, 42)) capturePoint(true, machine);
-        else if (inside(x, y, 76, 100, 380, 42)) capturePoint(false, machine);
-        else if (inside(x, y, 76, 148, 380, 42)) { screen_ = Screen::Speed; redraw(); }
-        else if (inside(x, y, 76, 196, 380, 42)) { screen_ = Screen::Rounds; redraw(); }
-        else if (inside(x, y, 76, 248, 380, 60)) startTest(machine);
+        if (inside(x, y, 66, 54, 190, 72)) capturePoint(true, machine);
+        else if (inside(x, y, 276, 54, 190, 72)) capturePoint(false, machine);
+        else if (inside(x, y, 66, 136, 190, 72)) { screen_ = Screen::Speed; redraw(); }
+        else if (inside(x, y, 276, 136, 190, 72)) { screen_ = Screen::Rounds; redraw(); }
+        else if (inside(x, y, 116, 228, 300, 72)) startTest(machine);
     } else if (screen_ == Screen::RangeTest) {
         const char axes[] = {'X', 'Y', 'Z'};
         const int16_t rows[] = {58, 142, 226};

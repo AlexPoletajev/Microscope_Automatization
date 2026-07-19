@@ -8,6 +8,7 @@ constexpr int16_t left = 52;
 constexpr int16_t sliderLeft = 145;
 constexpr int16_t sliderRight = 386;
 constexpr int scanMaxSpeed = 1000;
+constexpr int scanMaxZSpeed = 2400;
 constexpr int maxFocusSteps = 20;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
@@ -101,6 +102,7 @@ void ScanUi::loadProfile() {
         const int swap = profile_.overlapMin; profile_.overlapMin = profile_.overlapMax; profile_.overlapMax = swap;
     }
     profile_.speed = constrain(p.getInt("speed", 60), 1, scanMaxSpeed);
+    profile_.zSpeed = constrain(p.getInt("zSpeed", profile_.speed), 1, scanMaxZSpeed);
     profile_.settleMs = constrain((p.getInt("settle", 300) + 25) / 50 * 50, 0, 2000);
     profile_.focusSteps = constrain(p.getInt("focusN", 1), 1, maxFocusSteps);
     profile_.cameraPulseMs = constrain(p.getInt("camPulse", 10), 5, 50);
@@ -133,7 +135,8 @@ void ScanUi::saveProfile() {
     p.putFloat("frameX", profile_.frameX); p.putFloat("frameY", profile_.frameY);
     p.putBool("frameXok", profile_.frameXSet); p.putBool("frameYok", profile_.frameYSet);
     p.putInt("camW", profile_.cameraWidth); p.putInt("camH", profile_.cameraHeight);
-    p.putInt("ovMin", profile_.overlapMin); p.putInt("ovMax", profile_.overlapMax); p.putInt("speed", profile_.speed);
+    p.putInt("ovMin", profile_.overlapMin); p.putInt("ovMax", profile_.overlapMax);
+    p.putInt("speed", profile_.speed); p.putInt("zSpeed", profile_.zSpeed);
     p.putInt("settle", profile_.settleMs); p.putInt("focusN", profile_.focusSteps); p.putBool("camera", profile_.cameraEnabled);
     p.putInt("camPulse", profile_.cameraPulseMs);
     p.putBool("return", profile_.returnToStart);
@@ -176,13 +179,13 @@ void ScanUi::drawWorkflow(const ScanMachineStatus* machine) {
     drawHeader("SCAN");
     const ScanMachineStatus& status = machine == nullptr ? machine_ : *machine;
     const bool canCapture = controlsAvailable(status);
-    drawButton(76, 50, 380, 38, sessionStartSet_ ? "XY START NEU SETZEN" : "XY START SETZEN", sessionStartSet_, canCapture);
-    drawButton(76, 92, 380, 38, sessionEndSet_ ? "XY ENDE NEU SETZEN" : "XY ENDE SETZEN", sessionEndSet_, canCapture);
-    drawButton(76, 134, 380, 38, sessionFocusStartSet_ ? "Z START NEU SETZEN" : "Z START SETZEN", sessionFocusStartSet_, canCapture);
-    drawButton(76, 176, 380, 38, sessionFocusEndSet_ ? "Z ENDE NEU SETZEN" : "Z ENDE SETZEN", sessionFocusEndSet_, canCapture);
-    drawGridSummary(231);
+    drawButton(66, 54, 190, 72, "XY START", sessionStartSet_, canCapture);
+    drawButton(276, 54, 190, 72, "XY ENDE", sessionEndSet_, canCapture);
+    drawButton(66, 136, 190, 72, "Z START", sessionFocusStartSet_, canCapture);
+    drawButton(276, 136, 190, 72, "Z ENDE", sessionFocusEndSet_, canCapture);
+    drawGridSummary(225);
     const bool ready = readyToScan(status);
-    drawButton(76, 250, 380, 58, "SCAN STARTEN", false, ready);
+    drawButton(116, 246, 300, 62, "SCAN STARTEN", false, ready);
 }
 
 void ScanUi::drawGridSummary(int16_t y) {
@@ -230,7 +233,7 @@ void ScanUi::drawSettingsMenu() {
     drawHeader("EINSTELLUNGEN");
     drawButton(68, 54, 190, 46, "BILDFELD", profile_.frameXSet && profile_.frameYSet);
     drawButton(274, 54, 190, 46, "OVERLAP " + String(profile_.overlapMin) + "-" + String(profile_.overlapMax) + "%");
-    drawButton(68, 108, 190, 46, "TEMPO " + String(profile_.speed));
+    drawButton(68, 108, 190, 46, "TEMPO XY/Z");
     drawButton(274, 108, 190, 46, "RUHE " + String(profile_.settleMs));
     drawButton(68, 162, 190, 46, "SCHAERFE " + String(profile_.focusSteps));
     drawButton(274, 162, 190, 46, "KAMERA", profile_.cameraEnabled);
@@ -242,6 +245,17 @@ void ScanUi::drawOverlapMenu() {
     drawHeader("OVERLAP-BEREICH", true);
     drawButton(86, 82, 360, 76, "MINIMUM  " + String(profile_.overlapMin) + "%");
     drawButton(86, 184, 360, 76, "MAXIMUM  " + String(profile_.overlapMax) + "%");
+}
+
+void ScanUi::drawSpeedMenu() {
+    drawHeader("SCAN-TEMPO", true);
+    drawButton(66, 82, 190, 150, "XY  " + String(profile_.speed));
+    drawButton(276, 82, 190, 150, "Z  " + String(profile_.zSpeed));
+    display_.setTextDatum(MC_DATUM);
+    display_.setTextColor(muted, background);
+    display_.setFreeFont(&FreeSansBold9pt7b);
+    display_.drawString("mm/min", 266, 266);
+    display_.setTextFont(1);
 }
 
 void ScanUi::drawFieldMenu() {
@@ -282,8 +296,9 @@ void ScanUi::drawCalibration(char axis) {
 
 void ScanUi::drawParameter() {
     const char* title = parameter_ == Parameter::OverlapMin ? "OVERLAP MIN" :
-        (parameter_ == Parameter::OverlapMax ? "OVERLAP MAX" : parameter_ == Parameter::Speed ? "TEMPO" :
-        (parameter_ == Parameter::Settle ? "RUHEZEIT" : "SCHAERFESCHRITTE"));
+        (parameter_ == Parameter::OverlapMax ? "OVERLAP MAX" : parameter_ == Parameter::Speed ? "XY-TEMPO" :
+        (parameter_ == Parameter::ZSpeed ? "Z-TEMPO" :
+        (parameter_ == Parameter::Settle ? "RUHEZEIT" : "SCHAERFESCHRITTE")));
     drawHeader(title, true);
     drawParameterControl();
     drawButton(70, 210, 120, 70, "-", false); drawButton(342, 210, 120, 70, "+", false);
@@ -297,6 +312,7 @@ void ScanUi::drawParameterControl() {
     if (parameter_ == Parameter::OverlapMin) { value = profile_.overlapMin; minimum = 0; maximum = 80; unit = "%"; }
     else if (parameter_ == Parameter::OverlapMax) { value = profile_.overlapMax; minimum = 0; maximum = 80; unit = "%"; }
     else if (parameter_ == Parameter::Speed) { value = profile_.speed; minimum = 1; maximum = scanMaxSpeed; unit = " mm/min"; }
+    else if (parameter_ == Parameter::ZSpeed) { value = profile_.zSpeed; minimum = 1; maximum = scanMaxZSpeed; unit = " mm/min"; }
     else if (parameter_ == Parameter::Settle) { value = profile_.settleMs; minimum = 0; maximum = 2000; unit = " ms"; }
     else { value = profile_.focusSteps; minimum = 1; maximum = maxFocusSteps; unit = " SCHRITTE"; }
     display_.setTextDatum(MC_DATUM); display_.setTextColor(text, background);
@@ -330,6 +346,7 @@ void ScanUi::draw() {
     if (screen_ == Screen::Workflow) phase_ == Phase::Idle ? drawWorkflow() : drawProgress();
     else if (screen_ == Screen::SettingsMenu) drawSettingsMenu();
     else if (screen_ == Screen::OverlapMenu) drawOverlapMenu();
+    else if (screen_ == Screen::SpeedMenu) drawSpeedMenu();
     else if (screen_ == Screen::FieldMenu) drawFieldMenu();
     else if (screen_ == Screen::CalibrateX) drawCalibration('X');
     else if (screen_ == Screen::CalibrateY) drawCalibration('Y');
@@ -397,7 +414,9 @@ void ScanUi::updateParameterFromX(int16_t x) {
     x = constrain(x, sliderLeft, sliderRight);
     const int previous = parameter_ == Parameter::OverlapMin ? profile_.overlapMin :
         (parameter_ == Parameter::OverlapMax ? profile_.overlapMax :
-        (parameter_ == Parameter::Speed ? profile_.speed : (parameter_ == Parameter::Settle ? profile_.settleMs : profile_.focusSteps)));
+        (parameter_ == Parameter::Speed ? profile_.speed :
+        (parameter_ == Parameter::ZSpeed ? profile_.zSpeed :
+        (parameter_ == Parameter::Settle ? profile_.settleMs : profile_.focusSteps))));
     if (parameter_ == Parameter::OverlapMin) {
         profile_.overlapMin = map(x, sliderLeft, sliderRight, 0, 80);
         if (profile_.overlapMin > profile_.overlapMax) profile_.overlapMax = profile_.overlapMin;
@@ -406,11 +425,14 @@ void ScanUi::updateParameterFromX(int16_t x) {
         if (profile_.overlapMax < profile_.overlapMin) profile_.overlapMin = profile_.overlapMax;
     }
     else if (parameter_ == Parameter::Speed) profile_.speed = map(x, sliderLeft, sliderRight, 1, scanMaxSpeed);
+    else if (parameter_ == Parameter::ZSpeed) profile_.zSpeed = map(x, sliderLeft, sliderRight, 1, scanMaxZSpeed);
     else if (parameter_ == Parameter::Settle) profile_.settleMs = map(x, sliderLeft, sliderRight, 0, 40) * 50;
     else profile_.focusSteps = map(x, sliderLeft, sliderRight, 1, maxFocusSteps);
     const int current = parameter_ == Parameter::OverlapMin ? profile_.overlapMin :
         (parameter_ == Parameter::OverlapMax ? profile_.overlapMax :
-        (parameter_ == Parameter::Speed ? profile_.speed : (parameter_ == Parameter::Settle ? profile_.settleMs : profile_.focusSteps)));
+        (parameter_ == Parameter::Speed ? profile_.speed :
+        (parameter_ == Parameter::ZSpeed ? profile_.zSpeed :
+        (parameter_ == Parameter::Settle ? profile_.settleMs : profile_.focusSteps))));
     if (current == previous) return;
     calculateGrid();
     if (visible_ && screen_ == Screen::Parameter) drawParameterControl();
@@ -425,6 +447,7 @@ void ScanUi::changeParameter(int delta) {
         if (profile_.overlapMax < profile_.overlapMin) profile_.overlapMin = profile_.overlapMax;
     }
     else if (parameter_ == Parameter::Speed) profile_.speed = constrain(profile_.speed + delta, 1, scanMaxSpeed);
+    else if (parameter_ == Parameter::ZSpeed) profile_.zSpeed = constrain(profile_.zSpeed + delta, 1, scanMaxZSpeed);
     else if (parameter_ == Parameter::Settle) profile_.settleMs = constrain(profile_.settleMs + delta * 50, 0, 2000);
     else profile_.focusSteps = constrain(profile_.focusSteps + delta, 1, maxFocusSteps);
     calculateGrid(); saveProfile(); redraw();
@@ -494,7 +517,8 @@ ScanOverview ScanUi::overview() const {
     value.actualOverlapY = value.frameY > 0.00001F ? 100.0F * (1.0F - value.stepY / value.frameY) : 0.0F;
     value.overlapMin = profile_.overlapMin; value.overlapMax = profile_.overlapMax;
     value.columns = columns_; value.rows = rows_; value.focusSteps = profile_.focusSteps; value.totalImages = totalImages_;
-    value.speed = profile_.speed; value.settleMs = profile_.settleMs; value.cameraPulseMs = profile_.cameraPulseMs;
+    value.speed = profile_.speed; value.zSpeed = profile_.zSpeed;
+    value.settleMs = profile_.settleMs; value.cameraPulseMs = profile_.cameraPulseMs;
     value.cameraWidth = profile_.cameraWidth; value.cameraHeight = profile_.cameraHeight;
     value.uniformX = uniformX_; value.uniformY = uniformY_;
     value.cameraEnabled = profile_.cameraEnabled; value.returnToStart = profile_.returnToStart;
@@ -514,7 +538,8 @@ bool ScanUi::moveRangeEndpoint(char axis, bool endPoint, const ScanMachineStatus
     else if (axis == 'Y') target = endPoint ? sessionEndY_ : sessionStartY_;
     else if (axis == 'Z') target = endPoint ? sessionFocusEndZ_ : sessionFocusStartZ_;
     else return false;
-    sendLine("G90 G21 G1 " + String(axis) + String(target, 4) + " F" + String(profile_.speed));
+    const int feed = axis == 'Z' ? profile_.zSpeed : profile_.speed;
+    sendLine("G90 G21 G1 " + String(axis) + String(target, 4) + " F" + String(feed));
     return true;
 }
 
@@ -525,7 +550,8 @@ bool ScanUi::moveScanStep(char axis, int direction, const ScanMachineStatus& mac
 bool ScanUi::moveTestDistance(char axis, float distance, int direction, const ScanMachineStatus& machine) {
     if (!controlsAvailable(machine)) return false;
     if (distance <= 0.00001F || (axis != 'X' && axis != 'Y' && axis != 'Z')) return false;
-    sendLine("G91 G21 G1 " + String(axis) + String(direction < 0 ? -distance : distance, 4) + " F" + String(profile_.speed));
+    const int feed = axis == 'Z' ? profile_.zSpeed : profile_.speed;
+    sendLine("G91 G21 G1 " + String(axis) + String(direction < 0 ? -distance : distance, 4) + " F" + String(feed));
     return true;
 }
 
@@ -534,7 +560,8 @@ void ScanUi::sendLine(const String& value) {
 }
 
 void ScanUi::sendMove(float x, float y, float z) {
-    sendLine("G90 G21 G1 X" + String(x, 4) + " Y" + String(y, 4) + " Z" + String(z, 4) + " F" + String(profile_.speed));
+    sendLine("G90 G21 G1 X" + String(x, 4) + " Y" + String(y, 4) + " F" + String(profile_.speed));
+    sendLine("G90 G21 G1 Z" + String(z, 4) + " F" + String(profile_.zSpeed));
 }
 
 void ScanUi::targetForIndex(int index, float& x, float& y, float& z) const {
@@ -658,31 +685,33 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         if (screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY) screen_ = Screen::FieldMenu;
         else if (screen_ == Screen::Parameter &&
                  (parameter_ == Parameter::OverlapMin || parameter_ == Parameter::OverlapMax)) screen_ = Screen::OverlapMenu;
+        else if (screen_ == Screen::Parameter &&
+                 (parameter_ == Parameter::Speed || parameter_ == Parameter::ZSpeed)) screen_ = Screen::SpeedMenu;
         else screen_ = Screen::SettingsMenu;
         redraw(); return;
     }
     if (screen_ == Screen::Workflow) {
-        if (inside(x, y, 76, 50, 380, 38)) {
+        if (inside(x, y, 66, 54, 190, 72)) {
             if (controlsAvailable(machine)) {
                 sessionStartX_ = machine.x; sessionStartY_ = machine.y; sessionStartSet_ = true; calculateGrid(); redraw();
             }
-        } else if (inside(x, y, 76, 92, 380, 38)) {
+        } else if (inside(x, y, 276, 54, 190, 72)) {
             if (controlsAvailable(machine)) {
                 sessionEndX_ = machine.x; sessionEndY_ = machine.y; sessionEndSet_ = true; calculateGrid(); redraw();
             }
-        } else if (inside(x, y, 76, 134, 380, 38)) {
+        } else if (inside(x, y, 66, 136, 190, 72)) {
             if (controlsAvailable(machine)) {
                 sessionFocusStartZ_ = machine.z; sessionFocusStartSet_ = true; redraw();
             }
-        } else if (inside(x, y, 76, 176, 380, 38)) {
+        } else if (inside(x, y, 276, 136, 190, 72)) {
             if (controlsAvailable(machine)) {
                 sessionFocusEndZ_ = machine.z; sessionFocusEndSet_ = true; redraw();
             }
-        } else if (inside(x, y, 76, 250, 380, 58)) startScan(machine);
+        } else if (inside(x, y, 116, 246, 300, 62)) startScan(machine);
     } else if (screen_ == Screen::SettingsMenu) {
         if (inside(x, y, 68, 54, 190, 46)) { screen_ = Screen::FieldMenu; redraw(); }
         else if (inside(x, y, 274, 54, 190, 46)) { screen_ = Screen::OverlapMenu; redraw(); }
-        else if (inside(x, y, 68, 108, 190, 46)) openParameter(Parameter::Speed);
+        else if (inside(x, y, 68, 108, 190, 46)) { screen_ = Screen::SpeedMenu; redraw(); }
         else if (inside(x, y, 274, 108, 190, 46)) openParameter(Parameter::Settle);
         else if (inside(x, y, 68, 162, 190, 46)) openParameter(Parameter::FocusSteps);
         else if (inside(x, y, 274, 162, 190, 46)) { screen_ = Screen::Camera; redraw(); }
@@ -691,6 +720,9 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
     } else if (screen_ == Screen::OverlapMenu) {
         if (inside(x, y, 86, 82, 360, 76)) openParameter(Parameter::OverlapMin);
         else if (inside(x, y, 86, 184, 360, 76)) openParameter(Parameter::OverlapMax);
+    } else if (screen_ == Screen::SpeedMenu) {
+        if (inside(x, y, 66, 82, 190, 150)) openParameter(Parameter::Speed);
+        else if (inside(x, y, 276, 82, 190, 150)) openParameter(Parameter::ZSpeed);
     } else if (screen_ == Screen::FieldMenu) {
         calibrationASet_ = false;
         if (inside(x, y, 86, 82, 360, 76)) { screen_ = Screen::CalibrateX; redraw(); }

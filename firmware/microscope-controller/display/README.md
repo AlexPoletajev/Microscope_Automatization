@@ -48,8 +48,9 @@ the mainboard UART output and CH340 output remain electrically connected to the 
 5. Add microscope views using the command contract in `protocol/stage-control.md`.
 
 The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a scan workflow, a repeatability/slip
-test and large settings pages. The calibrated field size, camera resolution, overlap range, scan speed up to
-1000 mm/min, settling time, camera enable state, camera pulse length and return behavior are persisted in display
+test and large settings pages. The calibrated field size, camera resolution, overlap range, separate XY scan speed
+up to 1000 mm/min and Z scan speed up to 2400 mm/min, settling time, camera enable state, camera pulse length and
+return behavior are persisted in display
 NVS. Scan start and end positions deliberately live only for the current display
 session and are cleared by a restart. When more than one focus step is selected, the Z start and end positions are
 also captured in the scan workflow and remain session-only. The scan executor follows an endpoint-inclusive
@@ -63,7 +64,7 @@ states come from FluidNC.
 
 The Tests page contains a complete scan overview, scan-step, field-width, scan-range and slip tests. The overview
 shows field calibration, XYZ ranges and steps, requested and actual overlap, edge exceptions, raster dimensions,
-image total, speed, settling, camera pulse, resolution and return behavior. The step and field-width tests move
+image total, separate XY/Z speeds, settling, camera pulse, resolution and return behavior. The step and field-width tests move
 X/Y/Z by the corresponding incremental or complete distance. The scan-range test provides six absolute controls
 for the X, Y and Z start/end coordinates. The slip test captures two session-only XYZ points, including
 the focus Z position at each point. It moves to A first and then performs the configured number of A-B-A rounds at
