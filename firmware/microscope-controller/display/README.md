@@ -74,6 +74,13 @@ for the X, Y and Z start/end coordinates. The slip test captures two session-onl
 the focus Z position at each point. It moves to A first and then performs the configured number of A-B-A rounds at
 the saved test speed, always ending at A. Test speed and round count persist in display NVS; stopping aborts motion.
 
+The settings page also provides a persistent scan history. Only successfully completed scans are recorded; stopped
+or failed scans are omitted. A 32-entry NVS ring stores the defined XYZ endpoints, duration, field calibration,
+requested and achieved overlap, raster and image counts, XYZ steps and feeds, settling and camera timing,
+resolution, return behavior and edge-step flags. The newest records are shown first and the oldest record is
+overwritten when the ring is full. The display has no real-time clock, so records use a persistent sequence number
+and measured duration rather than an unreliable wall-clock timestamp.
+
 All touch-and-hold jog controls continuously repeat bounded motion segments while pressed. On touch release, the
 display repeats the realtime jog cancel command until FluidNC reports `Idle`, covering the XY pad, the XY/ZA arrows
 and field-calibration arrows.

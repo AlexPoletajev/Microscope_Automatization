@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
+#include "scan_history.h"
+
 enum class ScanMotionState { Unknown, Idle, Moving, Blocked };
 
 struct ScanMachineStatus {
@@ -65,7 +67,7 @@ public:
     bool moveTestDistance(char axis, float distance, int direction, const ScanMachineStatus& machine);
 
 private:
-    enum class Screen { Workflow, SettingsMenu, OverlapMenu, SpeedMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution };
+    enum class Screen { Workflow, SettingsMenu, OverlapMenu, SpeedMenu, FieldMenu, CalibrateX, CalibrateY, Parameter, Camera, Resolution, HistoryList, HistoryDetail };
     enum class Parameter { OverlapMin, OverlapMax, Speed, ZSpeed, Settle, FocusSteps };
     enum class TouchAction { None, Jog, Slider };
     enum class JogDirection { None, Negative, Positive };
@@ -92,6 +94,8 @@ private:
     TFT_eSPI& display_;
     HardwareSerial& controller_;
     Profile profile_;
+    ScanHistoryStore history_;
+    ScanHistoryRecord selectedHistory_;
     Screen screen_ = Screen::Workflow;
     Parameter parameter_ = Parameter::OverlapMin;
     TouchAction touchAction_ = TouchAction::None;
@@ -106,11 +110,15 @@ private:
     bool recoveryUnlockSent_ = false;
     bool jogCancelPending_ = false;
     bool visible_ = false;
+    bool historyRecorded_ = false;
     char jogAxis_ = 'X';
     uint32_t lastJogAt_ = 0;
     uint32_t lastRecoveryUnlockAt_ = 0;
     uint32_t lastJogCancelAt_ = 0;
     uint32_t jogCancelStartedAt_ = 0;
+    uint32_t scanStartedAt_ = 0;
+    uint8_t historyPage_ = 0;
+    uint8_t historyDetailPage_ = 0;
     ScanMachineStatus machine_;
     float calibrationA_ = 0.0F;
     bool calibrationASet_ = false;
@@ -154,6 +162,8 @@ private:
     void drawParameterControl();
     void drawCamera();
     void drawResolution();
+    void drawHistoryList();
+    void drawHistoryDetail();
     void drawAxisArrow(int16_t centerX, bool positive, bool pressed = false, bool enabled = true);
     void onPress(int16_t x, int16_t y, const ScanMachineStatus& machine);
     void onDrag(int16_t x);
@@ -177,4 +187,6 @@ private:
     void sendMove(float x, float y, float z);
     void targetForIndex(int index, float& x, float& y, float& z) const;
     void advanceScan();
+    void completeScan();
+    ScanHistoryRecord makeHistoryRecord() const;
 };

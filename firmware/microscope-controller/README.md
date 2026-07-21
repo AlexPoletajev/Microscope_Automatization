@@ -41,6 +41,9 @@ After the initial installation, configuration and web-app changes should be writ
 This updates only the LittleFS partition at `0x610000`. Use the full `flash.sh` only for firmware-core updates or
 recovery because it replaces the complete flash, including saved Wi-Fi settings.
 
+The deployed ESP32-S3 module has 8 MB flash and 320 KB internal RAM without PSRAM. Its current partition table
+reserves two 3 MB OTA application slots, 20 KB NVS and `0x1F0000` bytes (about 1.94 MiB) for LittleFS.
+
 ## Back up and flash
 
 Connect the board by USB while it is still running the Makerbase firmware:

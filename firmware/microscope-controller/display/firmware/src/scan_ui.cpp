@@ -10,6 +10,8 @@ constexpr int16_t sliderRight = 386;
 constexpr int scanMaxSpeed = 1000;
 constexpr int scanMaxZSpeed = 6000;
 constexpr int maxFocusSteps = 20;
+constexpr int cameraRecoveryMs = 100;
+constexpr uint8_t historyRowsPerPage = 4;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
 constexpr uint32_t jogCancelRepeatMs = 50;
@@ -25,6 +27,17 @@ void drawUiText(TFT_eSPI& display, const String& value, int16_t x, int16_t y, bo
 
 bool inside(int16_t x, int16_t y, int16_t bx, int16_t by, int16_t w, int16_t h) {
     return x >= bx && x <= bx + w && y >= by && y <= by + h;
+}
+
+String formatDuration(uint32_t durationMs) {
+    const uint32_t totalSeconds = durationMs / 1000;
+    const uint32_t hours = totalSeconds / 3600;
+    const uint32_t minutes = (totalSeconds / 60) % 60;
+    const uint32_t seconds = totalSeconds % 60;
+    char value[16];
+    if (hours > 0) snprintf(value, sizeof(value), "%lu:%02lu:%02lu", hours, minutes, seconds);
+    else snprintf(value, sizeof(value), "%02lu:%02lu", minutes, seconds);
+    return String(value);
 }
 
 struct AxisLayout {
@@ -85,6 +98,7 @@ void ScanUi::begin() {
     red = display_.color565(255, 91, 91);
     loadProfile();
     migrateLegacyProfile();
+    history_.begin();
     calculateGrid();
 }
 
@@ -239,6 +253,7 @@ void ScanUi::drawSettingsMenu() {
     drawButton(274, 162, 190, 46, "KAMERA", profile_.cameraEnabled);
     drawButton(68, 216, 190, 46, "AUFLOESUNG");
     drawButton(274, 216, 190, 46, profile_.returnToStart ? "RUECKKEHR AN" : "RUECKKEHR AUS", profile_.returnToStart);
+    drawButton(171, 270, 190, 42, "SCAN-HISTORIE", history_.count() > 0);
 }
 
 void ScanUi::drawOverlapMenu() {
@@ -340,6 +355,90 @@ void ScanUi::drawResolution() {
     for (int i = 0; i < 3; ++i) drawButton(86, 70 + i * 72, 360, 56, String(widths[i]) + " x " + heights[i] + " px", profile_.cameraWidth == widths[i]);
 }
 
+void ScanUi::drawHistoryList() {
+    drawHeader("SCAN-HISTORIE", true);
+    const uint8_t count = history_.count();
+    if (count == 0) {
+        display_.setTextDatum(MC_DATUM);
+        display_.setTextColor(muted, background);
+        drawUiText(display_, "NOCH KEINE BEENDETEN SCANS", 266, 164, true);
+        return;
+    }
+    const uint8_t pageCount = (count + historyRowsPerPage - 1) / historyRowsPerPage;
+    if (historyPage_ >= pageCount) historyPage_ = pageCount - 1;
+    for (uint8_t row = 0; row < historyRowsPerPage; ++row) {
+        const uint8_t index = historyPage_ * historyRowsPerPage + row;
+        if (index >= count) break;
+        ScanHistoryRecord record;
+        if (!history_.newest(index, record)) continue;
+        const int16_t y = 54 + row * 52;
+        display_.fillRoundRect(66, y, 400, 46, 6, raised);
+        display_.drawRoundRect(66, y, 400, 46, 6, lineColor);
+        display_.drawRoundRect(67, y + 1, 398, 44, 5, lineColor);
+        display_.setTextDatum(MC_DATUM);
+        display_.setTextColor(cyan, raised);
+        display_.setFreeFont(&FreeSansBold9pt7b);
+        const String label = "#" + String(record.sequence) + "   " + String(record.columns) + "x" +
+            String(record.rows) + "x" + String(record.focusSteps) + "   " + String(record.totalImages) +
+            " BILDER   " + formatDuration(record.durationMs);
+        display_.drawString(label, 266, y + 23);
+        display_.setTextFont(1);
+    }
+    drawButton(66, 270, 100, 42, "<", false, historyPage_ > 0);
+    display_.setTextDatum(MC_DATUM);
+    display_.setTextColor(text, background);
+    display_.setFreeFont(&FreeSansBold9pt7b);
+    display_.drawString(String(historyPage_ + 1) + " / " + String(pageCount), 266, 291);
+    display_.setTextFont(1);
+    drawButton(366, 270, 100, 42, ">", false, historyPage_ + 1 < pageCount);
+}
+
+void ScanUi::drawHistoryDetail() {
+    drawHeader((String("SCAN #") + String(selectedHistory_.sequence)).c_str(), true);
+    String lines[10];
+    int lineCount = 0;
+    if (historyDetailPage_ == 0) {
+        lines[lineCount++] = "DAUER  " + formatDuration(selectedHistory_.durationMs);
+        lines[lineCount++] = "RASTER  X " + String(selectedHistory_.columns) + "  Y " + String(selectedHistory_.rows) +
+            "  Z " + String(selectedHistory_.focusSteps);
+        lines[lineCount++] = "BILDER  " + String(selectedHistory_.totalImages);
+        lines[lineCount++] = "START  X " + String(selectedHistory_.startX, 3) + "  Y " + String(selectedHistory_.startY, 3);
+        lines[lineCount++] = "ENDE   X " + String(selectedHistory_.endX, 3) + "  Y " + String(selectedHistory_.endY, 3);
+        lines[lineCount++] = "Z  START " + String(selectedHistory_.startZ, 4) + "  ENDE " + String(selectedHistory_.endZ, 4);
+        lines[lineCount++] = "BEREICH  X " + String(fabsf(selectedHistory_.endX - selectedHistory_.startX), 3) +
+            "  Y " + String(fabsf(selectedHistory_.endY - selectedHistory_.startY), 3);
+        lines[lineCount++] = "BEREICH Z  " + String(fabsf(selectedHistory_.endZ - selectedHistory_.startZ), 4) + " mm";
+        lines[lineCount++] = "BILDFELD  X " + String(selectedHistory_.frameX, 4) + "  Y " + String(selectedHistory_.frameY, 4);
+    } else {
+        lines[lineCount++] = "SCHRITT  X " + String(selectedHistory_.stepX, 4) + "  Y " + String(selectedHistory_.stepY, 4);
+        lines[lineCount++] = "SCHRITT Z  " + String(selectedHistory_.stepZ, 4) + " mm";
+        lines[lineCount++] = "OVERLAP SOLL  " + String(selectedHistory_.overlapMin) + "-" + String(selectedHistory_.overlapMax) + "%";
+        lines[lineCount++] = "OVERLAP IST  X " + String(selectedHistory_.actualOverlapX, 1) +
+            "%  Y " + String(selectedHistory_.actualOverlapY, 1) + "%";
+        lines[lineCount++] = "TEMPO  XY " + String(selectedHistory_.speed) + "  Z " + String(selectedHistory_.zSpeed) + " mm/min";
+        lines[lineCount++] = "RUHE " + String(selectedHistory_.settleMs) + " ms   IMPULS " +
+            String(selectedHistory_.cameraPulseMs) + " ms";
+        lines[lineCount++] = "KAMERA-PAUSE  " + String(selectedHistory_.cameraRecoveryMs) + " ms";
+        lines[lineCount++] = "KAMERA  " + String(selectedHistory_.flags & ScanHistoryStore::cameraEnabledFlag ? "AN" : "AUS");
+        lines[lineCount++] = "AUFLOESUNG  " + String(selectedHistory_.cameraWidth) + "x" + String(selectedHistory_.cameraHeight);
+        lines[lineCount++] = "RUECKKEHR  " + String(selectedHistory_.flags & ScanHistoryStore::returnToStartFlag ? "AN" : "AUS") +
+            "   RAND  " + String((selectedHistory_.flags & ScanHistoryStore::uniformXFlag) ? "-" : "X") +
+            String((selectedHistory_.flags & ScanHistoryStore::uniformYFlag) ? "" : "Y");
+    }
+    display_.setTextDatum(MC_DATUM);
+    display_.setTextColor(text, background);
+    display_.setFreeFont(&FreeSansBold9pt7b);
+    for (int index = 0; index < lineCount; ++index) display_.drawString(lines[index], 266, 56 + index * 22);
+    display_.setTextFont(1);
+    drawButton(66, 270, 100, 42, "<", false, historyDetailPage_ > 0);
+    display_.setTextDatum(MC_DATUM);
+    display_.setTextColor(text, background);
+    display_.setFreeFont(&FreeSansBold9pt7b);
+    display_.drawString(String(historyDetailPage_ + 1) + " / 2", 266, 291);
+    display_.setTextFont(1);
+    drawButton(366, 270, 100, 42, ">", false, historyDetailPage_ < 1);
+}
+
 void ScanUi::draw() {
     if (!visible_) return;
     display_.fillRect(left, 0, 480 - left, 320, background);
@@ -352,7 +451,9 @@ void ScanUi::draw() {
     else if (screen_ == Screen::CalibrateY) drawCalibration('Y');
     else if (screen_ == Screen::Parameter) drawParameter();
     else if (screen_ == Screen::Camera) drawCamera();
-    else drawResolution();
+    else if (screen_ == Screen::Resolution) drawResolution();
+    else if (screen_ == Screen::HistoryList) drawHistoryList();
+    else drawHistoryDetail();
 }
 
 void ScanUi::redraw() {
@@ -586,6 +687,7 @@ void ScanUi::startScan(const ScanMachineStatus& machine) {
     calculateGrid();
     if (!readyToScan(machine)) return;
     returnX_ = machine.x; returnY_ = machine.y; returnZ_ = machine.z; currentIndex_ = 0; pauseRequested_ = false;
+    scanStartedAt_ = millis(); historyRecorded_ = false;
     releaseTrigger(); phase_ = Phase::SendMove; phaseStartedAt_ = millis(); redraw();
 }
 
@@ -621,9 +723,40 @@ void ScanUi::advanceScan() {
     ++currentIndex_;
     if (currentIndex_ >= totalImages_) {
         if (profile_.returnToStart) { sendMove(returnX_, returnY_, returnZ_); phase_ = Phase::ReturnStart; moveObserved_ = false; phaseStartedAt_ = millis(); }
-        else phase_ = Phase::Done;
+        else completeScan();
     } else phase_ = pauseRequested_ ? Phase::Paused : Phase::SendMove;
     redraw();
+}
+
+ScanHistoryRecord ScanUi::makeHistoryRecord() const {
+    ScanHistoryRecord record;
+    record.durationMs = millis() - scanStartedAt_;
+    record.totalImages = totalImages_;
+    record.startX = sessionStartX_; record.startY = sessionStartY_;
+    record.endX = sessionEndX_; record.endY = sessionEndY_;
+    record.startZ = profile_.focusSteps > 1 ? sessionFocusStartZ_ : returnZ_;
+    record.endZ = profile_.focusSteps > 1 ? sessionFocusEndZ_ : returnZ_;
+    record.frameX = profile_.frameX; record.frameY = profile_.frameY;
+    record.stepX = strideX_; record.stepY = strideY_;
+    record.stepZ = profile_.focusSteps > 1 ? fabsf(record.endZ - record.startZ) / (profile_.focusSteps - 1) : 0.0F;
+    record.actualOverlapX = profile_.frameX > 0.00001F ? 100.0F * (1.0F - strideX_ / profile_.frameX) : 0.0F;
+    record.actualOverlapY = profile_.frameY > 0.00001F ? 100.0F * (1.0F - strideY_ / profile_.frameY) : 0.0F;
+    record.overlapMin = profile_.overlapMin; record.overlapMax = profile_.overlapMax;
+    record.columns = columns_; record.rows = rows_; record.focusSteps = profile_.focusSteps;
+    record.speed = profile_.speed; record.zSpeed = profile_.zSpeed; record.settleMs = profile_.settleMs;
+    record.cameraPulseMs = profile_.cameraPulseMs;
+    record.cameraRecoveryMs = cameraRecoveryMs;
+    record.cameraWidth = profile_.cameraWidth; record.cameraHeight = profile_.cameraHeight;
+    if (profile_.cameraEnabled) record.flags |= ScanHistoryStore::cameraEnabledFlag;
+    if (profile_.returnToStart) record.flags |= ScanHistoryStore::returnToStartFlag;
+    if (uniformX_) record.flags |= ScanHistoryStore::uniformXFlag;
+    if (uniformY_) record.flags |= ScanHistoryStore::uniformYFlag;
+    return record;
+}
+
+void ScanUi::completeScan() {
+    if (!historyRecorded_) historyRecorded_ = history_.append(makeHistoryRecord());
+    phase_ = Phase::Done;
 }
 
 void ScanUi::service(const ScanMachineStatus& machine) {
@@ -673,10 +806,10 @@ void ScanUi::service(const ScanMachineStatus& machine) {
         else advanceScan();
     } else if (phase_ == Phase::TriggerOn && now - phaseStartedAt_ >= static_cast<uint32_t>(profile_.cameraPulseMs)) {
         releaseTrigger(); phase_ = Phase::TriggerOff; phaseStartedAt_ = millis(); redraw();
-    } else if (phase_ == Phase::TriggerOff && now - phaseStartedAt_ >= 100) advanceScan();
+    } else if (phase_ == Phase::TriggerOff && now - phaseStartedAt_ >= cameraRecoveryMs) advanceScan();
     else if (phase_ == Phase::ReturnStart) {
         if (machine.motion == ScanMotionState::Moving) moveObserved_ = true;
-        if (machine.motion == ScanMotionState::Idle && (moveObserved_ || now - phaseStartedAt_ > 350)) { phase_ = Phase::Done; redraw(); }
+        if (machine.motion == ScanMotionState::Idle && (moveObserved_ || now - phaseStartedAt_ > 350)) { completeScan(); redraw(); }
     }
 }
 
@@ -690,7 +823,8 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
     }
     if (screen_ != Screen::Workflow && screen_ != Screen::SettingsMenu && inside(x, y, 62, 8, 58, 32)) {
         calibrationASet_ = false;
-        if (screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY) screen_ = Screen::FieldMenu;
+        if (screen_ == Screen::HistoryDetail) screen_ = Screen::HistoryList;
+        else if (screen_ == Screen::CalibrateX || screen_ == Screen::CalibrateY) screen_ = Screen::FieldMenu;
         else if (screen_ == Screen::Parameter &&
                  (parameter_ == Parameter::OverlapMin || parameter_ == Parameter::OverlapMax)) screen_ = Screen::OverlapMenu;
         else if (screen_ == Screen::Parameter &&
@@ -725,6 +859,7 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         else if (inside(x, y, 274, 162, 190, 46)) { screen_ = Screen::Camera; redraw(); }
         else if (inside(x, y, 68, 216, 190, 46)) { screen_ = Screen::Resolution; redraw(); }
         else if (inside(x, y, 274, 216, 190, 46)) { profile_.returnToStart = !profile_.returnToStart; saveProfile(); redraw(); }
+        else if (inside(x, y, 171, 270, 190, 42)) { historyPage_ = 0; screen_ = Screen::HistoryList; redraw(); }
     } else if (screen_ == Screen::OverlapMenu) {
         if (inside(x, y, 86, 82, 360, 76)) openParameter(Parameter::OverlapMin);
         else if (inside(x, y, 86, 184, 360, 76)) openParameter(Parameter::OverlapMax);
@@ -753,6 +888,20 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         else if (inside(x, y, 86, 214, 360, 56)) { profile_.cameraWidth = 5472; profile_.cameraHeight = 3648; }
         else return;
         saveProfile(); redraw();
+    } else if (screen_ == Screen::HistoryList) {
+        const uint8_t count = history_.count();
+        const uint8_t pageCount = count == 0 ? 0 : (count + historyRowsPerPage - 1) / historyRowsPerPage;
+        for (uint8_t row = 0; row < historyRowsPerPage; ++row) {
+            const uint8_t index = historyPage_ * historyRowsPerPage + row;
+            if (index < count && inside(x, y, 66, 54 + row * 52, 400, 46) && history_.newest(index, selectedHistory_)) {
+                historyDetailPage_ = 0; screen_ = Screen::HistoryDetail; redraw(); return;
+            }
+        }
+        if (inside(x, y, 66, 270, 100, 42) && historyPage_ > 0) { --historyPage_; redraw(); }
+        else if (inside(x, y, 366, 270, 100, 42) && historyPage_ + 1 < pageCount) { ++historyPage_; redraw(); }
+    } else if (screen_ == Screen::HistoryDetail) {
+        if (inside(x, y, 66, 270, 100, 42) && historyDetailPage_ > 0) { --historyDetailPage_; redraw(); }
+        else if (inside(x, y, 366, 270, 100, 42) && historyDetailPage_ < 1) { ++historyDetailPage_; redraw(); }
     }
 }
 
