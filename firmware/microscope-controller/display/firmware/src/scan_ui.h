@@ -37,12 +37,16 @@ struct ScanOverview {
     int zSpeed = 0;
     int settleMs = 0;
     int cameraPulseMs = 0;
+    int markerZMs = 0;
+    int markerXMs = 0;
+    int markerYMs = 0;
     int cameraWidth = 0;
     int cameraHeight = 0;
     bool uniformX = false;
     bool uniformY = false;
     bool cameraEnabled = false;
     bool returnToStart = false;
+    bool timingMarkers = false;
 };
 
 class ScanUi {
@@ -89,6 +93,7 @@ private:
         bool frameYSet = false;
         bool cameraEnabled = false;
         bool returnToStart = true;
+        bool timingMarkers = true;
     };
 
     TFT_eSPI& display_;
@@ -189,4 +194,5 @@ private:
     void advanceScan();
     void completeScan();
     ScanHistoryRecord makeHistoryRecord() const;
+    uint32_t transitionDelayMs() const;
 };

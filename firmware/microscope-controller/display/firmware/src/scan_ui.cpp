@@ -7,10 +7,12 @@ namespace {
 constexpr int16_t left = 52;
 constexpr int16_t sliderLeft = 145;
 constexpr int16_t sliderRight = 386;
-constexpr int scanMaxSpeed = 1000;
-constexpr int scanMaxZSpeed = 6000;
+constexpr int scanMaxSpeed = 2000;
+constexpr int scanMaxZSpeed = 12000;
 constexpr int maxFocusSteps = 20;
 constexpr int cameraRecoveryMs = 100;
+constexpr int xMarkerDelayMs = 8000;
+constexpr int yMarkerDelayMs = 20000;
 constexpr uint8_t historyRowsPerPage = 4;
 constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
@@ -124,6 +126,7 @@ void ScanUi::loadProfile() {
     profile_.frameYSet = p.getBool("frameYok", false) && profile_.frameY > 0.00001F;
     profile_.cameraEnabled = p.getBool("camera", p.getBool("trigger", false));
     profile_.returnToStart = p.getBool("return", true);
+    profile_.timingMarkers = p.getBool("markers", true);
     p.end();
     const bool knownResolution = (profile_.cameraWidth == 1920 && profile_.cameraHeight == 1080) ||
         (profile_.cameraWidth == 3840 && profile_.cameraHeight == 2160) ||
@@ -154,6 +157,7 @@ void ScanUi::saveProfile() {
     p.putInt("settle", profile_.settleMs); p.putInt("focusN", profile_.focusSteps); p.putBool("camera", profile_.cameraEnabled);
     p.putInt("camPulse", profile_.cameraPulseMs);
     p.putBool("return", profile_.returnToStart);
+    p.putBool("markers", profile_.timingMarkers);
     p.end();
 }
 
@@ -225,7 +229,10 @@ void ScanUi::drawProgress() {
     const int completed = min(currentIndex_, totalImages_);
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(phase_ == Phase::Error ? red : cyan, background);
-    drawUiText(display_, phaseLabel(static_cast<int>(phase_)), 266, 76, true);
+    const uint32_t activeTransitionDelay = phase_ == Phase::TriggerOff ? transitionDelayMs() : 0;
+    const char* activeLabel = activeTransitionDelay >= yMarkerDelayMs ? "Y-MARKER  20 s" :
+        (activeTransitionDelay >= xMarkerDelayMs ? "X-MARKER  8 s" : phaseLabel(static_cast<int>(phase_)));
+    drawUiText(display_, activeLabel, 266, 76, true);
     display_.setTextColor(text, background);
     drawUiText(display_, String(completed) + " / " + totalImages_, 266, 118, true);
     drawGridSummary(146);
@@ -253,7 +260,8 @@ void ScanUi::drawSettingsMenu() {
     drawButton(274, 162, 190, 46, "KAMERA", profile_.cameraEnabled);
     drawButton(68, 216, 190, 46, "AUFLOESUNG");
     drawButton(274, 216, 190, 46, profile_.returnToStart ? "RUECKKEHR AN" : "RUECKKEHR AUS", profile_.returnToStart);
-    drawButton(171, 270, 190, 42, "SCAN-HISTORIE", history_.count() > 0);
+    drawButton(68, 270, 190, 42, profile_.timingMarkers ? "MARKER AN" : "MARKER AUS", profile_.timingMarkers);
+    drawButton(274, 270, 190, 42, "HISTORIE", history_.count() > 0);
 }
 
 void ScanUi::drawOverlapMenu() {
@@ -419,8 +427,11 @@ void ScanUi::drawHistoryDetail() {
         lines[lineCount++] = "RUHE " + String(selectedHistory_.settleMs) + " ms   IMPULS " +
             String(selectedHistory_.cameraPulseMs) + " ms";
         lines[lineCount++] = "KAMERA-PAUSE  " + String(selectedHistory_.cameraRecoveryMs) + " ms";
-        lines[lineCount++] = "KAMERA  " + String(selectedHistory_.flags & ScanHistoryStore::cameraEnabledFlag ? "AN" : "AUS");
-        lines[lineCount++] = "AUFLOESUNG  " + String(selectedHistory_.cameraWidth) + "x" + String(selectedHistory_.cameraHeight);
+        lines[lineCount++] = selectedHistory_.flags & ScanHistoryStore::timingMarkersFlag
+            ? "MARKER  Z NORMAL  X " + String(selectedHistory_.reserved[0]) + " s  Y " + String(selectedHistory_.reserved[1]) + " s"
+            : "MARKER  AUS";
+        lines[lineCount++] = "KAMERA " + String(selectedHistory_.flags & ScanHistoryStore::cameraEnabledFlag ? "AN  " : "AUS  ") +
+            String(selectedHistory_.cameraWidth) + "x" + String(selectedHistory_.cameraHeight);
         lines[lineCount++] = "RUECKKEHR  " + String(selectedHistory_.flags & ScanHistoryStore::returnToStartFlag ? "AN" : "AUS") +
             "   RAND  " + String((selectedHistory_.flags & ScanHistoryStore::uniformXFlag) ? "-" : "X") +
             String((selectedHistory_.flags & ScanHistoryStore::uniformYFlag) ? "" : "Y");
@@ -620,9 +631,11 @@ ScanOverview ScanUi::overview() const {
     value.columns = columns_; value.rows = rows_; value.focusSteps = profile_.focusSteps; value.totalImages = totalImages_;
     value.speed = profile_.speed; value.zSpeed = profile_.zSpeed;
     value.settleMs = profile_.settleMs; value.cameraPulseMs = profile_.cameraPulseMs;
+    value.markerZMs = cameraRecoveryMs; value.markerXMs = xMarkerDelayMs; value.markerYMs = yMarkerDelayMs;
     value.cameraWidth = profile_.cameraWidth; value.cameraHeight = profile_.cameraHeight;
     value.uniformX = uniformX_; value.uniformY = uniformY_;
     value.cameraEnabled = profile_.cameraEnabled; value.returnToStart = profile_.returnToStart;
+    value.timingMarkers = profile_.timingMarkers;
     return value;
 }
 
@@ -751,12 +764,27 @@ ScanHistoryRecord ScanUi::makeHistoryRecord() const {
     if (profile_.returnToStart) record.flags |= ScanHistoryStore::returnToStartFlag;
     if (uniformX_) record.flags |= ScanHistoryStore::uniformXFlag;
     if (uniformY_) record.flags |= ScanHistoryStore::uniformYFlag;
+    if (profile_.timingMarkers) {
+        record.flags |= ScanHistoryStore::timingMarkersFlag;
+        record.reserved[0] = xMarkerDelayMs / 1000;
+        record.reserved[1] = yMarkerDelayMs / 1000;
+        record.reserved[2] = 1;
+    }
     return record;
 }
 
 void ScanUi::completeScan() {
     if (!historyRecorded_) historyRecorded_ = history_.append(makeHistoryRecord());
     phase_ = Phase::Done;
+}
+
+uint32_t ScanUi::transitionDelayMs() const {
+    if (!profile_.timingMarkers) return cameraRecoveryMs;
+    if (currentIndex_ + 1 >= totalImages_) return cameraRecoveryMs;
+    const int focusIndex = currentIndex_ % profile_.focusSteps;
+    if (focusIndex + 1 < profile_.focusSteps) return cameraRecoveryMs;
+    const int xyIndex = currentIndex_ / profile_.focusSteps;
+    return (xyIndex + 1) % columns_ == 0 ? yMarkerDelayMs : xMarkerDelayMs;
 }
 
 void ScanUi::service(const ScanMachineStatus& machine) {
@@ -806,7 +834,7 @@ void ScanUi::service(const ScanMachineStatus& machine) {
         else advanceScan();
     } else if (phase_ == Phase::TriggerOn && now - phaseStartedAt_ >= static_cast<uint32_t>(profile_.cameraPulseMs)) {
         releaseTrigger(); phase_ = Phase::TriggerOff; phaseStartedAt_ = millis(); redraw();
-    } else if (phase_ == Phase::TriggerOff && now - phaseStartedAt_ >= cameraRecoveryMs) advanceScan();
+    } else if (phase_ == Phase::TriggerOff && now - phaseStartedAt_ >= transitionDelayMs()) advanceScan();
     else if (phase_ == Phase::ReturnStart) {
         if (machine.motion == ScanMotionState::Moving) moveObserved_ = true;
         if (machine.motion == ScanMotionState::Idle && (moveObserved_ || now - phaseStartedAt_ > 350)) { completeScan(); redraw(); }
@@ -859,7 +887,8 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         else if (inside(x, y, 274, 162, 190, 46)) { screen_ = Screen::Camera; redraw(); }
         else if (inside(x, y, 68, 216, 190, 46)) { screen_ = Screen::Resolution; redraw(); }
         else if (inside(x, y, 274, 216, 190, 46)) { profile_.returnToStart = !profile_.returnToStart; saveProfile(); redraw(); }
-        else if (inside(x, y, 171, 270, 190, 42)) { historyPage_ = 0; screen_ = Screen::HistoryList; redraw(); }
+        else if (inside(x, y, 68, 270, 190, 42)) { profile_.timingMarkers = !profile_.timingMarkers; saveProfile(); redraw(); }
+        else if (inside(x, y, 274, 270, 190, 42)) { historyPage_ = 0; screen_ = Screen::HistoryList; redraw(); }
     } else if (screen_ == Screen::OverlapMenu) {
         if (inside(x, y, 86, 82, 360, 76)) openParameter(Parameter::OverlapMin);
         else if (inside(x, y, 86, 184, 360, 76)) openParameter(Parameter::OverlapMax);

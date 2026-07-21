@@ -46,6 +46,7 @@ public:
     static constexpr uint8_t returnToStartFlag = 1 << 1;
     static constexpr uint8_t uniformXFlag = 1 << 2;
     static constexpr uint8_t uniformYFlag = 1 << 3;
+    static constexpr uint8_t timingMarkersFlag = 1 << 4;
 
     void begin();
     bool append(ScanHistoryRecord record);

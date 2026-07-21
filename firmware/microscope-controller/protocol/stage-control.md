@@ -52,6 +52,10 @@ remains at the position present at scan start. No later
 grid move is queued before the current image is complete, and cancellation explicitly releases the
 camera output before resetting motion.
 
+When the persisted timing-marker option is enabled, normal Z transitions retain the camera recovery interval,
+transitions to the next X stack wait at least 8 seconds, and transitions to the next serpentine Y row wait at least
+20 seconds. These gaps are applied after the trigger is released and before the next grid move.
+
 ## Display slip test sequence
 
 The display captures two session-only XYZ positions, so each endpoint includes its own focus Z coordinate. After

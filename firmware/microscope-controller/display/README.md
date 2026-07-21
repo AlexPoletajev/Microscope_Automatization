@@ -49,7 +49,7 @@ the mainboard UART output and CH340 output remain electrically connected to the 
 
 The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a scan workflow, a repeatability/slip
 test and large settings pages. The calibrated field size, camera resolution, overlap range, separate XY scan speed
-up to 1000 mm/min and Z scan speed up to 6000 mm/min, settling time, camera enable state and
+up to 2000 mm/min and Z scan speed up to 12000 mm/min, settling time, camera enable state, timing-marker mode and
 return behavior are persisted in display
 NVS. Scan start and end positions deliberately live only for the current display
 session and are cleared by a restart. When more than one focus step is selected, the Z start and end positions are
@@ -80,6 +80,12 @@ requested and achieved overlap, raster and image counts, XYZ steps and feeds, se
 resolution, return behavior and edge-step flags. The newest records are shown first and the oldest record is
 overwritten when the ring is full. The display has no real-time clock, so records use a persistent sequence number
 and measured duration rather than an unreliable wall-clock timestamp.
+
+The optional timing-marker mode accounts for cameras whose EXIF timestamps only have whole-second resolution.
+Ordinary Z-stack transitions retain the normal camera recovery interval, completed stacks enforce an 8-second
+minimum interval before the next X position, and completed serpentine rows enforce 20 seconds before the next Y
+position. This creates three separable timestamp classes without extra marker images. The setting persists in NVS,
+is visible in the scan overview and is copied into each completed history record.
 
 All touch-and-hold jog controls continuously repeat bounded motion segments while pressed. On touch release, the
 display repeats the realtime jog cancel command until FluidNC reports `Idle`, covering the XY pad, the XY/ZA arrows

@@ -134,13 +134,14 @@ void SlipTestUi::drawOverview() {
         "TEMPO XY " + String(value.speed) + "  Z " + String(value.zSpeed) + " mm/min",
         "RUHE " + String(value.settleMs) + " ms   KAMERA " + String(value.cameraEnabled ? "AN" : "AUS"),
         "IMPULS " + String(value.cameraPulseMs) + " ms",
+        value.timingMarkers ? "MARKER  Z NORMAL  X 8 s  Y 20 s" : "MARKER  AUS",
         "AUFLOESUNG " + String(value.cameraWidth) + "x" + String(value.cameraHeight) +
             "   RUECK " + String(value.returnToStart ? "AN" : "AUS")
     };
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(text, background);
     display_.setFreeFont(&FreeSansBold9pt7b);
-    for (int index = 0; index < 11; ++index) display_.drawString(lines[index], 266, 54 + index * 24);
+    for (int index = 0; index < 12; ++index) display_.drawString(lines[index], 266, 51 + index * 22);
     display_.setTextFont(1);
 }
 
