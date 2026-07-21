@@ -47,6 +47,7 @@ struct ScanOverview {
     bool cameraEnabled = false;
     bool returnToStart = false;
     bool timingMarkers = false;
+    bool focusSerpentine = true;
 };
 
 class ScanUi {

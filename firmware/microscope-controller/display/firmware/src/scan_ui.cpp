@@ -403,7 +403,7 @@ void ScanUi::drawHistoryList() {
 
 void ScanUi::drawHistoryDetail() {
     drawHeader((String("SCAN #") + String(selectedHistory_.sequence)).c_str(), true);
-    String lines[10];
+    String lines[12];
     int lineCount = 0;
     if (historyDetailPage_ == 0) {
         lines[lineCount++] = "DAUER  " + formatDuration(selectedHistory_.durationMs);
@@ -430,6 +430,8 @@ void ScanUi::drawHistoryDetail() {
         lines[lineCount++] = selectedHistory_.flags & ScanHistoryStore::timingMarkersFlag
             ? "MARKER  Z NORMAL  X " + String(selectedHistory_.reserved[0]) + " s  Y " + String(selectedHistory_.reserved[1]) + " s"
             : "MARKER  AUS";
+        lines[lineCount++] = selectedHistory_.flags & ScanHistoryStore::focusSerpentineFlag
+            ? "Z-FOLGE  PENDEL" : "Z-FOLGE  START-ZU-ENDE";
         lines[lineCount++] = "KAMERA " + String(selectedHistory_.flags & ScanHistoryStore::cameraEnabledFlag ? "AN  " : "AUS  ") +
             String(selectedHistory_.cameraWidth) + "x" + String(selectedHistory_.cameraHeight);
         lines[lineCount++] = "RUECKKEHR  " + String(selectedHistory_.flags & ScanHistoryStore::returnToStartFlag ? "AN" : "AUS") +
@@ -439,7 +441,7 @@ void ScanUi::drawHistoryDetail() {
     display_.setTextDatum(MC_DATUM);
     display_.setTextColor(text, background);
     display_.setFreeFont(&FreeSansBold9pt7b);
-    for (int index = 0; index < lineCount; ++index) display_.drawString(lines[index], 266, 56 + index * 22);
+    for (int index = 0; index < lineCount; ++index) display_.drawString(lines[index], 266, 52 + index * 20);
     display_.setTextFont(1);
     drawButton(66, 270, 100, 42, "<", false, historyDetailPage_ > 0);
     display_.setTextDatum(MC_DATUM);
@@ -636,6 +638,7 @@ ScanOverview ScanUi::overview() const {
     value.uniformX = uniformX_; value.uniformY = uniformY_;
     value.cameraEnabled = profile_.cameraEnabled; value.returnToStart = profile_.returnToStart;
     value.timingMarkers = profile_.timingMarkers;
+    value.focusSerpentine = true;
     return value;
 }
 
@@ -680,7 +683,8 @@ void ScanUi::sendMove(float x, float y, float z) {
 
 void ScanUi::targetForIndex(int index, float& x, float& y, float& z) const {
     const int xyIndex = index / profile_.focusSteps;
-    const int focusIndex = index % profile_.focusSteps;
+    int focusIndex = index % profile_.focusSteps;
+    if ((xyIndex & 1) && profile_.focusSteps > 1) focusIndex = profile_.focusSteps - 1 - focusIndex;
     const int row = xyIndex / columns_; int column = xyIndex % columns_;
     if (row & 1) column = columns_ - 1 - column;
     const float spanX = fabsf(sessionEndX_ - sessionStartX_);
@@ -764,6 +768,7 @@ ScanHistoryRecord ScanUi::makeHistoryRecord() const {
     if (profile_.returnToStart) record.flags |= ScanHistoryStore::returnToStartFlag;
     if (uniformX_) record.flags |= ScanHistoryStore::uniformXFlag;
     if (uniformY_) record.flags |= ScanHistoryStore::uniformYFlag;
+    record.flags |= ScanHistoryStore::focusSerpentineFlag;
     if (profile_.timingMarkers) {
         record.flags |= ScanHistoryStore::timingMarkersFlag;
         record.reserved[0] = xMarkerDelayMs / 1000;

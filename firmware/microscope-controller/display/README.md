@@ -87,6 +87,11 @@ minimum interval before the next X position, and completed serpentine rows enfor
 position. This creates three separable timestamp classes without extra marker images. The setting persists in NVS,
 is visible in the scan overview and is copied into each completed history record.
 
+Focus stacks also follow a serpentine Z order. The first XY position runs from focus start to focus end, the next
+position runs from focus end back to focus start, and the direction continues alternating at every XY position.
+This removes the full Z reset between neighboring stacks while preserving the same image count and focus levels.
+The Z-order mode is shown in the scan overview and stored with completed history entries.
+
 All touch-and-hold jog controls continuously repeat bounded motion segments while pressed. On touch release, the
 display repeats the realtime jog cancel command until FluidNC reports `Idle`, covering the XY pad, the XY/ZA arrows
 and field-calibration arrows.
