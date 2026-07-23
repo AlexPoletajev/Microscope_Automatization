@@ -128,8 +128,10 @@ private:
     ScanMachineStatus machine_;
     float calibrationA_ = 0.0F;
     bool calibrationASet_ = false;
-    bool sessionStartSet_ = false;
-    bool sessionEndSet_ = false;
+    bool sessionStartXSet_ = false;
+    bool sessionEndXSet_ = false;
+    bool sessionStartYSet_ = false;
+    bool sessionEndYSet_ = false;
     bool sessionFocusStartSet_ = false;
     bool sessionFocusEndSet_ = false;
     float sessionStartX_ = 0.0F;

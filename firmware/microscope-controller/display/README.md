@@ -51,8 +51,9 @@ The display UI provides a full-screen XY pad, separate XY/ZA jog controls, a sca
 test and large settings pages. The calibrated field size, camera resolution, overlap range, separate XY scan speed
 up to 2000 mm/min and Z scan speed up to 12000 mm/min, settling time, camera enable state, timing-marker mode and
 return behavior are persisted in display
-NVS. Scan start and end positions deliberately live only for the current display
-session and are cleared by a restart. When more than one focus step is selected, the Z start and end positions are
+NVS. Scan start and end positions are captured independently for X and Y, deliberately live only for the current
+display session and are cleared by a restart. Changing one axis endpoint never overwrites an endpoint of the other
+axis. When more than one focus step is selected, the Z start and end positions are
 also captured in the scan workflow and remain session-only. The scan executor follows an endpoint-inclusive
 serpentine XY path and distributes the configured focus steps evenly between those Z endpoints. It provides progress,
 pause-at-next-frame and cancel controls. The workflow and progress view show the X-column, Y-row, Z-focus and total

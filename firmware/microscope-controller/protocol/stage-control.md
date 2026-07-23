@@ -38,8 +38,9 @@ recovery action and does not replace a power-cutting emergency stop.
 
 ## Display scan sequence
 
-The display stores XY frame calibration and scan parameters in its own NVS. The XY scan endpoints and optional Z
-focus endpoints are session-only and are intentionally discarded on display restart. It derives an
+The display stores XY frame calibration and scan parameters in its own NVS. X start/end and Y start/end are
+captured independently, while all XY scan endpoints and optional Z focus endpoints are session-only and are
+intentionally discarded on display restart. It derives an
 endpoint-inclusive serpentine grid from the calibrated frame span and requested overlap range. For each axis, an
 integer interval count is selected that creates one uniform overlap inside the range and lands exactly on the end
 point. If no such integer count exists, nominal interior strides are used and only the final edge step is shortened.

@@ -197,13 +197,15 @@ void ScanUi::drawWorkflow(const ScanMachineStatus* machine) {
     drawHeader("SCAN");
     const ScanMachineStatus& status = machine == nullptr ? machine_ : *machine;
     const bool canCapture = controlsAvailable(status);
-    drawButton(66, 54, 190, 72, "XY START", sessionStartSet_, canCapture);
-    drawButton(276, 54, 190, 72, "XY ENDE", sessionEndSet_, canCapture);
-    drawButton(66, 136, 190, 72, "Z START", sessionFocusStartSet_, canCapture);
-    drawButton(276, 136, 190, 72, "Z ENDE", sessionFocusEndSet_, canCapture);
-    drawGridSummary(225);
+    drawButton(66, 52, 190, 48, "X START", sessionStartXSet_, canCapture);
+    drawButton(276, 52, 190, 48, "X ENDE", sessionEndXSet_, canCapture);
+    drawButton(66, 104, 190, 48, "Y START", sessionStartYSet_, canCapture);
+    drawButton(276, 104, 190, 48, "Y ENDE", sessionEndYSet_, canCapture);
+    drawButton(66, 156, 190, 48, "Z START", sessionFocusStartSet_, canCapture);
+    drawButton(276, 156, 190, 48, "Z ENDE", sessionFocusEndSet_, canCapture);
+    drawGridSummary(220);
     const bool ready = readyToScan(status);
-    drawButton(116, 246, 300, 62, "SCAN STARTEN", false, ready);
+    drawButton(116, 240, 300, 68, "SCAN STARTEN", false, ready);
 }
 
 void ScanUi::drawGridSummary(int16_t y) {
@@ -568,7 +570,8 @@ void ScanUi::changeParameter(int delta) {
 }
 
 void ScanUi::calculateGrid() {
-    if (!(profile_.frameXSet && profile_.frameYSet && sessionStartSet_ && sessionEndSet_)) {
+    if (!(profile_.frameXSet && profile_.frameYSet &&
+          sessionStartXSet_ && sessionEndXSet_ && sessionStartYSet_ && sessionEndYSet_)) {
         columns_ = rows_ = totalImages_ = 0; strideX_ = strideY_ = 0.0F; uniformX_ = uniformY_ = false; return;
     }
     const AxisLayout xLayout = calculateAxisLayout(fabsf(sessionEndX_ - sessionStartX_), profile_.frameX,
@@ -585,7 +588,8 @@ bool ScanUi::readyToScan(const ScanMachineStatus& machine) const {
     return controlsAvailable(machine) &&
         profile_.frameXSet && profile_.frameYSet &&
         (profile_.focusSteps == 1 || (sessionFocusStartSet_ && sessionFocusEndSet_)) &&
-        sessionStartSet_ && sessionEndSet_ && totalImages_ > 0;
+        sessionStartXSet_ && sessionEndXSet_ && sessionStartYSet_ && sessionEndYSet_ &&
+        totalImages_ > 0;
 }
 
 bool ScanUi::controlsAvailable(const ScanMachineStatus& machine) const {
@@ -614,8 +618,8 @@ float ScanUi::frameDistance(char axis) const {
 }
 
 float ScanUi::scanRange(char axis) const {
-    if (axis == 'X' && sessionStartSet_ && sessionEndSet_) return fabsf(sessionEndX_ - sessionStartX_);
-    if (axis == 'Y' && sessionStartSet_ && sessionEndSet_) return fabsf(sessionEndY_ - sessionStartY_);
+    if (axis == 'X' && sessionStartXSet_ && sessionEndXSet_) return fabsf(sessionEndX_ - sessionStartX_);
+    if (axis == 'Y' && sessionStartYSet_ && sessionEndYSet_) return fabsf(sessionEndY_ - sessionStartY_);
     if (axis == 'Z' && sessionFocusStartSet_ && sessionFocusEndSet_)
         return fabsf(sessionFocusEndZ_ - sessionFocusStartZ_);
     return 0.0F;
@@ -643,7 +647,8 @@ ScanOverview ScanUi::overview() const {
 }
 
 bool ScanUi::rangeEndpointAvailable(char axis) const {
-    if (axis == 'X' || axis == 'Y') return sessionStartSet_ && sessionEndSet_;
+    if (axis == 'X') return sessionStartXSet_ && sessionEndXSet_;
+    if (axis == 'Y') return sessionStartYSet_ && sessionEndYSet_;
     if (axis == 'Z') return sessionFocusStartSet_ && sessionFocusEndSet_;
     return false;
 }
@@ -866,23 +871,31 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
         redraw(); return;
     }
     if (screen_ == Screen::Workflow) {
-        if (inside(x, y, 66, 54, 190, 72)) {
+        if (inside(x, y, 66, 52, 190, 48)) {
             if (controlsAvailable(machine)) {
-                sessionStartX_ = machine.x; sessionStartY_ = machine.y; sessionStartSet_ = true; calculateGrid(); redraw();
+                sessionStartX_ = machine.x; sessionStartXSet_ = true; calculateGrid(); redraw();
             }
-        } else if (inside(x, y, 276, 54, 190, 72)) {
+        } else if (inside(x, y, 276, 52, 190, 48)) {
             if (controlsAvailable(machine)) {
-                sessionEndX_ = machine.x; sessionEndY_ = machine.y; sessionEndSet_ = true; calculateGrid(); redraw();
+                sessionEndX_ = machine.x; sessionEndXSet_ = true; calculateGrid(); redraw();
             }
-        } else if (inside(x, y, 66, 136, 190, 72)) {
+        } else if (inside(x, y, 66, 104, 190, 48)) {
+            if (controlsAvailable(machine)) {
+                sessionStartY_ = machine.y; sessionStartYSet_ = true; calculateGrid(); redraw();
+            }
+        } else if (inside(x, y, 276, 104, 190, 48)) {
+            if (controlsAvailable(machine)) {
+                sessionEndY_ = machine.y; sessionEndYSet_ = true; calculateGrid(); redraw();
+            }
+        } else if (inside(x, y, 66, 156, 190, 48)) {
             if (controlsAvailable(machine)) {
                 sessionFocusStartZ_ = machine.z; sessionFocusStartSet_ = true; redraw();
             }
-        } else if (inside(x, y, 276, 136, 190, 72)) {
+        } else if (inside(x, y, 276, 156, 190, 48)) {
             if (controlsAvailable(machine)) {
                 sessionFocusEndZ_ = machine.z; sessionFocusEndSet_ = true; redraw();
             }
-        } else if (inside(x, y, 116, 246, 300, 62)) startScan(machine);
+        } else if (inside(x, y, 116, 240, 300, 68)) startScan(machine);
     } else if (screen_ == Screen::SettingsMenu) {
         if (inside(x, y, 68, 54, 190, 46)) { screen_ = Screen::FieldMenu; redraw(); }
         else if (inside(x, y, 274, 54, 190, 46)) { screen_ = Screen::OverlapMenu; redraw(); }
