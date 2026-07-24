@@ -19,7 +19,7 @@ constexpr uint8_t softReset = 0x18;
 constexpr uint32_t jogCancelRepeatMs = 50;
 constexpr uint32_t jogCancelGuardMs = 250;
 
-uint16_t background, surface, raised, lineColor, muted, text, cyan, cyanDark, green, amber, red;
+uint16_t background, surface, raised, lineColor, muted, text, cyan, cyanDark, green, greenDark, amber, red;
 
 void drawUiText(TFT_eSPI& display, const String& value, int16_t x, int16_t y, bool large = false) {
     display.setFreeFont(large ? &FreeSans12pt7b : &FreeSans9pt7b);
@@ -96,6 +96,7 @@ void ScanUi::begin() {
     cyan = display_.color565(96, 226, 255);
     cyanDark = display_.color565(23, 100, 119);
     green = display_.color565(79, 229, 145);
+    greenDark = display_.color565(24, 76, 50);
     amber = display_.color565(255, 192, 72);
     red = display_.color565(255, 91, 91);
     loadProfile();
@@ -181,13 +182,16 @@ void ScanUi::drawHeader(const char* title, bool back) {
     drawUiText(display_, title, back ? 134 : 266, 24, true);
 }
 
-void ScanUi::drawButton(int16_t x, int16_t y, int16_t w, int16_t h, const String& label, bool active, bool enabled) {
-    const uint16_t fill = enabled ? raised : surface;
+void ScanUi::drawButton(int16_t x, int16_t y, int16_t w, int16_t h, const String& label,
+                        bool active, bool enabled, bool successStyle) {
+    const uint16_t accent = active ? (successStyle ? green : cyan) : lineColor;
+    const bool successful = active && successStyle;
+    const uint16_t fill = successful ? greenDark : (enabled ? raised : surface);
     display_.fillRoundRect(x, y, w, h, 6, fill);
-    display_.drawRoundRect(x, y, w, h, 6, active ? cyan : lineColor);
-    display_.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 5, active ? cyan : lineColor);
+    display_.drawRoundRect(x, y, w, h, 6, accent);
+    display_.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 5, accent);
     display_.setTextDatum(MC_DATUM);
-    display_.setTextColor(enabled ? (active ? text : cyan) : muted, fill);
+    display_.setTextColor(successful ? green : (enabled ? (active ? text : cyan) : muted), fill);
     display_.setFreeFont(&FreeSansBold12pt7b);
     display_.drawString(label, x + w / 2, y + h / 2);
     display_.setTextFont(1);
@@ -197,12 +201,12 @@ void ScanUi::drawWorkflow(const ScanMachineStatus* machine) {
     drawHeader("SCAN");
     const ScanMachineStatus& status = machine == nullptr ? machine_ : *machine;
     const bool canCapture = controlsAvailable(status);
-    drawButton(66, 52, 190, 48, "X START", sessionStartXSet_, canCapture);
-    drawButton(276, 52, 190, 48, "X ENDE", sessionEndXSet_, canCapture);
-    drawButton(66, 104, 190, 48, "Y START", sessionStartYSet_, canCapture);
-    drawButton(276, 104, 190, 48, "Y ENDE", sessionEndYSet_, canCapture);
-    drawButton(66, 156, 190, 48, "Z START", sessionFocusStartSet_, canCapture);
-    drawButton(276, 156, 190, 48, "Z ENDE", sessionFocusEndSet_, canCapture);
+    drawButton(66, 52, 190, 48, "X START", sessionStartXSet_, canCapture, true);
+    drawButton(276, 52, 190, 48, "X ENDE", sessionEndXSet_, canCapture, true);
+    drawButton(66, 104, 190, 48, "Y START", sessionStartYSet_, canCapture, true);
+    drawButton(276, 104, 190, 48, "Y ENDE", sessionEndYSet_, canCapture, true);
+    drawButton(66, 156, 190, 48, "Z START", sessionFocusStartSet_, canCapture, true);
+    drawButton(276, 156, 190, 48, "Z ENDE", sessionFocusEndSet_, canCapture, true);
     drawGridSummary(220);
     const bool ready = readyToScan(status);
     drawButton(116, 240, 300, 68, "SCAN STARTEN", false, ready);
@@ -432,8 +436,9 @@ void ScanUi::drawHistoryDetail() {
         lines[lineCount++] = selectedHistory_.flags & ScanHistoryStore::timingMarkersFlag
             ? "MARKER  Z NORMAL  X " + String(selectedHistory_.reserved[0]) + " s  Y " + String(selectedHistory_.reserved[1]) + " s"
             : "MARKER  AUS";
-        lines[lineCount++] = selectedHistory_.flags & ScanHistoryStore::focusSerpentineFlag
-            ? "Z-FOLGE  PENDEL" : "Z-FOLGE  START-ZU-ENDE";
+        lines[lineCount++] = "XY-FOLGE  " +
+            String(selectedHistory_.flags & ScanHistoryStore::columnMajorFlag ? "SPALTEN" : "ZEILEN") +
+            "   Z  " + String(selectedHistory_.flags & ScanHistoryStore::focusSerpentineFlag ? "PENDEL" : "START-ENDE");
         lines[lineCount++] = "KAMERA " + String(selectedHistory_.flags & ScanHistoryStore::cameraEnabledFlag ? "AN  " : "AUS  ") +
             String(selectedHistory_.cameraWidth) + "x" + String(selectedHistory_.cameraHeight);
         lines[lineCount++] = "RUECKKEHR  " + String(selectedHistory_.flags & ScanHistoryStore::returnToStartFlag ? "AN" : "AUS") +
@@ -643,6 +648,7 @@ ScanOverview ScanUi::overview() const {
     value.cameraEnabled = profile_.cameraEnabled; value.returnToStart = profile_.returnToStart;
     value.timingMarkers = profile_.timingMarkers;
     value.focusSerpentine = true;
+    value.columnMajor = true;
     return value;
 }
 
@@ -690,8 +696,8 @@ void ScanUi::targetForIndex(int index, float& x, float& y, float& z) const {
     const int xyIndex = index / profile_.focusSteps;
     int focusIndex = index % profile_.focusSteps;
     if ((xyIndex & 1) && profile_.focusSteps > 1) focusIndex = profile_.focusSteps - 1 - focusIndex;
-    const int row = xyIndex / columns_; int column = xyIndex % columns_;
-    if (row & 1) column = columns_ - 1 - column;
+    const int column = xyIndex / rows_; int row = xyIndex % rows_;
+    if (column & 1) row = rows_ - 1 - row;
     const float spanX = fabsf(sessionEndX_ - sessionStartX_);
     const float spanY = fabsf(sessionEndY_ - sessionStartY_);
     const float offsetX = min(spanX, column * strideX_);
@@ -774,6 +780,7 @@ ScanHistoryRecord ScanUi::makeHistoryRecord() const {
     if (uniformX_) record.flags |= ScanHistoryStore::uniformXFlag;
     if (uniformY_) record.flags |= ScanHistoryStore::uniformYFlag;
     record.flags |= ScanHistoryStore::focusSerpentineFlag;
+    record.flags |= ScanHistoryStore::columnMajorFlag;
     if (profile_.timingMarkers) {
         record.flags |= ScanHistoryStore::timingMarkersFlag;
         record.reserved[0] = xMarkerDelayMs / 1000;
@@ -794,7 +801,7 @@ uint32_t ScanUi::transitionDelayMs() const {
     const int focusIndex = currentIndex_ % profile_.focusSteps;
     if (focusIndex + 1 < profile_.focusSteps) return cameraRecoveryMs;
     const int xyIndex = currentIndex_ / profile_.focusSteps;
-    return (xyIndex + 1) % columns_ == 0 ? yMarkerDelayMs : xMarkerDelayMs;
+    return (xyIndex + 1) % rows_ == 0 ? xMarkerDelayMs : yMarkerDelayMs;
 }
 
 void ScanUi::service(const ScanMachineStatus& machine) {

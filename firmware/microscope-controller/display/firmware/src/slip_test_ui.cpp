@@ -135,7 +135,8 @@ void SlipTestUi::drawOverview() {
         "RUHE " + String(value.settleMs) + " ms   KAMERA " + String(value.cameraEnabled ? "AN" : "AUS"),
         "IMPULS " + String(value.cameraPulseMs) + " ms",
         value.timingMarkers ? "MARKER  Z NORMAL  X 8 s  Y 20 s" : "MARKER  AUS",
-        value.focusSerpentine ? "Z-FOLGE  PENDEL" : "Z-FOLGE  START-ZU-ENDE",
+        "XY-FOLGE " + String(value.columnMajor ? "SPALTEN" : "ZEILEN") +
+            "   Z " + String(value.focusSerpentine ? "PENDEL" : "START-ENDE"),
         "AUFLOESUNG " + String(value.cameraWidth) + "x" + String(value.cameraHeight) +
             "   RUECK " + String(value.returnToStart ? "AN" : "AUS")
     };

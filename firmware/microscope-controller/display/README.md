@@ -54,8 +54,10 @@ return behavior are persisted in display
 NVS. Scan start and end positions are captured independently for X and Y, deliberately live only for the current
 display session and are cleared by a restart. Changing one axis endpoint never overwrites an endpoint of the other
 axis. When more than one focus step is selected, the Z start and end positions are
-also captured in the scan workflow and remain session-only. The scan executor follows an endpoint-inclusive
-serpentine XY path and distributes the configured focus steps evenly between those Z endpoints. It provides progress,
+also captured in the scan workflow and remain session-only. Set endpoint buttons use a green success state. The
+scan executor follows an endpoint-inclusive, column-major serpentine XY path: it traverses a complete Y column,
+moves once in X and traverses the next Y column in reverse. It distributes the configured focus steps evenly
+between the Z endpoints and provides progress,
 pause-at-next-frame and cancel controls. The workflow and progress view show the X-column, Y-row, Z-focus and total
 image counts so the acquisition grid can be reconstructed for stitching. X and Y use an equal endpoint-inclusive
 stride whenever an integer division falls inside the configured overlap range. Otherwise only the final edge step
@@ -83,9 +85,9 @@ overwritten when the ring is full. The display has no real-time clock, so record
 and measured duration rather than an unreliable wall-clock timestamp.
 
 The optional timing-marker mode accounts for cameras whose EXIF timestamps only have whole-second resolution.
-Ordinary Z-stack transitions retain the normal camera recovery interval, completed stacks enforce an 8-second
-minimum interval before the next X position, and completed serpentine rows enforce 20 seconds before the next Y
-position. This creates three separable timestamp classes without extra marker images. The setting persists in NVS,
+Ordinary Z-stack transitions retain the normal camera recovery interval, completed stacks enforce a 20-second
+minimum interval before the next Y position, and completed columns enforce 8 seconds before the next X position.
+This creates three separable timestamp classes without extra marker images. The setting persists in NVS,
 is visible in the scan overview and is copied into each completed history record.
 
 Focus stacks also follow a serpentine Z order. The first XY position runs from focus start to focus end, the next

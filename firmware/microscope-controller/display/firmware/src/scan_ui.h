@@ -48,6 +48,7 @@ struct ScanOverview {
     bool returnToStart = false;
     bool timingMarkers = false;
     bool focusSerpentine = true;
+    bool columnMajor = true;
 };
 
 class ScanUi {
@@ -157,7 +158,8 @@ private:
     void migrateLegacyProfile();
     void redraw();
     void drawHeader(const char* title, bool back = false);
-    void drawButton(int16_t x, int16_t y, int16_t width, int16_t height, const String& label, bool active = false, bool enabled = true);
+    void drawButton(int16_t x, int16_t y, int16_t width, int16_t height, const String& label,
+                    bool active = false, bool enabled = true, bool successStyle = false);
     void drawWorkflow(const ScanMachineStatus* machine = nullptr);
     void drawProgress();
     void drawGridSummary(int16_t y);

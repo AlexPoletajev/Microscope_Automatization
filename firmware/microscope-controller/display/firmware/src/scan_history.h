@@ -48,6 +48,7 @@ public:
     static constexpr uint8_t uniformYFlag = 1 << 3;
     static constexpr uint8_t timingMarkersFlag = 1 << 4;
     static constexpr uint8_t focusSerpentineFlag = 1 << 5;
+    static constexpr uint8_t columnMajorFlag = 1 << 6;
 
     void begin();
     bool append(ScanHistoryRecord record);

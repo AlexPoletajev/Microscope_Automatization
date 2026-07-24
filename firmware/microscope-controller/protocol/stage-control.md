@@ -40,8 +40,9 @@ recovery action and does not replace a power-cutting emergency stop.
 
 The display stores XY frame calibration and scan parameters in its own NVS. X start/end and Y start/end are
 captured independently, while all XY scan endpoints and optional Z focus endpoints are session-only and are
-intentionally discarded on display restart. It derives an
-endpoint-inclusive serpentine grid from the calibrated frame span and requested overlap range. For each axis, an
+intentionally discarded on display restart. It derives an endpoint-inclusive, column-major serpentine grid from
+the calibrated frame span and requested overlap range. It traverses Y completely before advancing X, then reverses
+Y direction for the next column. For each axis, an
 integer interval count is selected that creates one uniform overlap inside the range and lands exactly on the end
 point. If no such integer count exists, nominal interior strides are used and only the final edge step is shortened.
 For each image it sends an absolute XY move using the NVS-backed XY scan feed followed by an absolute Z move using
@@ -55,8 +56,8 @@ grid move is queued before the current image is complete, and cancellation expli
 camera output before resetting motion.
 
 When the persisted timing-marker option is enabled, normal Z transitions retain the camera recovery interval,
-transitions to the next X stack wait at least 8 seconds, and transitions to the next serpentine Y row wait at least
-20 seconds. These gaps are applied after the trigger is released and before the next grid move.
+transitions to the next Y stack wait at least 20 seconds, and transitions to the next serpentine X column wait at
+least 8 seconds. These gaps are applied after the trigger is released and before the next grid move.
 
 ## Display slip test sequence
 
