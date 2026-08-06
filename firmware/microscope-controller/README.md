@@ -69,6 +69,20 @@ The password is requested without echo. The controller tries the configured home
 own `MicroscopeStage` access point when that network is unavailable. In the home network the normal address is
 `http://microscope-stage.local`.
 
+## USB diagnosis
+
+To identify the main controller and TFT without flashing or moving the stage, run:
+
+```sh
+python3 scripts/diagnose_usb_devices.py
+python3 scripts/diagnose_usb_devices.py --watch
+```
+
+The script works on macOS and Windows, lists USB VID/PID information, recognizes FluidNC through a read-only realtime
+status request and reports any separate silent serial adapter as the likely TFT display. `--watch` repeats the check
+every two seconds while cables are reconnected. Exit status `0` means both roles are visible, `1` means only a partial
+setup was found and `2` means no USB serial device was detected.
+
 ## First motion test
 
 Check that X and Y have at least 2 mm clearance in both directions. Then run:
