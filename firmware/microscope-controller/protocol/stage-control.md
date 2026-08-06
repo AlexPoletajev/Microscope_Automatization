@@ -49,7 +49,8 @@ For each image it sends an absolute XY move using the NVS-backed XY scan feed fo
 the independently stored Z scan feed. It waits for FluidNC to report `Idle` after the target has been reached,
 applies the configured settling delay and optionally pulses `digital0` on GPIO38 once for a fixed 15 ms with `M64 P0`
 and `M65 P0`, followed by a minimum 100 ms camera recovery interval. An optional focus stack distributes the configured
-number of Z positions evenly from the session Z start through the session Z end position. With one focus step, Z
+number of Z positions, configurable from 1 through 100, evenly from the session Z start through the session Z end
+position. With one focus step, Z
 remains at the position present at scan start. With multiple steps, successive XY positions alternate between
 start-to-end and end-to-start Z traversal so the stage does not reset across the full focus range between stacks. No later
 grid move is queued before the current image is complete, and cancellation explicitly releases the

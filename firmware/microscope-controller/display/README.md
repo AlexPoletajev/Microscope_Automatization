@@ -53,7 +53,8 @@ up to 2000 mm/min and Z scan speed up to 12000 mm/min, settling time, camera ena
 return behavior are persisted in display
 NVS. Scan start and end positions are captured independently for X and Y, deliberately live only for the current
 display session and are cleared by a restart. Changing one axis endpoint never overwrites an endpoint of the other
-axis. When more than one focus step is selected, the Z start and end positions are
+axis. The focus-stack control allows 1 to 100 evenly distributed focus steps. When more than one focus step is
+selected, the Z start and end positions are
 also captured in the scan workflow and remain session-only. Set endpoint buttons use a green success state. The
 scan executor follows an endpoint-inclusive, column-major serpentine XY path: it traverses a complete Y column,
 moves once in X and traverses the next Y column in reverse. It distributes the configured focus steps evenly
