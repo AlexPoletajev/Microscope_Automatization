@@ -18,6 +18,7 @@ constexpr uint8_t jogCancel = 0x85;
 constexpr uint8_t softReset = 0x18;
 constexpr uint32_t jogCancelRepeatMs = 50;
 constexpr uint32_t jogCancelGuardMs = 250;
+constexpr int16_t heldJogMargin = 12;
 
 uint16_t background, surface, raised, lineColor, muted, text, cyan, cyanDark, green, greenDark, amber, red;
 
@@ -817,7 +818,13 @@ void ScanUi::service(const ScanMachineStatus& machine) {
             lastJogCancelAt_ = now;
         }
     }
-    if (touchAction_ == TouchAction::Jog && now - lastJogAt_ >= 150) sendJogSegment();
+    if (touchAction_ == TouchAction::Jog && (!machine.connected || machine.motion == ScanMotionState::Blocked)) {
+        stopJog();
+        touchAction_ = TouchAction::None;
+        redraw();
+    } else if (touchAction_ == TouchAction::Jog && now - lastJogAt_ >= 150) {
+        sendJogSegment();
+    }
     if (cameraTestActive_ && now - phaseStartedAt_ >= static_cast<uint32_t>(profile_.cameraPulseMs)) { releaseTrigger(); if (screen_ == Screen::Camera) redraw(); }
     if (phase_ == Phase::Recover) {
         if (machine.connected && recoveryUnlockSent_ && machine.motion == ScanMotionState::Idle) {
@@ -959,7 +966,21 @@ void ScanUi::onPress(int16_t x, int16_t y, const ScanMachineStatus& machine) {
     }
 }
 
-void ScanUi::onDrag(int16_t x) { if (touchAction_ == TouchAction::Slider) updateParameterFromX(x); }
+void ScanUi::onDrag(int16_t x, int16_t y) {
+    if (touchAction_ == TouchAction::Slider) {
+        updateParameterFromX(x);
+        return;
+    }
+    if (touchAction_ != TouchAction::Jog) return;
+
+    const int16_t bx = jogDirection_ == JogDirection::Negative ? 88 : 348;
+    if (!inside(x, y, bx - heldJogMargin, 112 - heldJogMargin,
+                96 + heldJogMargin * 2, 96 + heldJogMargin * 2)) {
+        stopJog();
+        touchAction_ = TouchAction::None;
+        redraw();
+    }
+}
 
 void ScanUi::onRelease() {
     if (touchAction_ == TouchAction::Jog) { stopJog(); redraw(); }
@@ -969,7 +990,7 @@ void ScanUi::onRelease() {
 
 void ScanUi::handleTouch(bool touched, int16_t x, int16_t y, const ScanMachineStatus& machine) {
     if (touched && !touchWasDown_) onPress(x, y, machine);
-    else if (touched && touchWasDown_) onDrag(x);
+    else if (touched && touchWasDown_) onDrag(x, y);
     else if (!touched && touchWasDown_) onRelease();
     touchWasDown_ = touched;
 }

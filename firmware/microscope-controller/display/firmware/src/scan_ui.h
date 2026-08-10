@@ -176,7 +176,7 @@ private:
     void drawHistoryDetail();
     void drawAxisArrow(int16_t centerX, bool positive, bool pressed = false, bool enabled = true);
     void onPress(int16_t x, int16_t y, const ScanMachineStatus& machine);
-    void onDrag(int16_t x);
+    void onDrag(int16_t x, int16_t y);
     void onRelease();
     void openParameter(Parameter parameter);
     void startJog(JogDirection direction, char axis);

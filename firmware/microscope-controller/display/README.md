@@ -100,6 +100,11 @@ All touch-and-hold jog controls continuously repeat bounded motion segments whil
 display repeats the realtime jog cancel command until FluidNC reports `Idle`, covering the XY pad, the XY/ZA arrows
 and field-calibration arrows.
 
+Jog holds have no time limit. Every touch frame must continue to report exactly one active contact with the same
+FT62xx touch ID inside the originally pressed control. Lift/no-event frames, a second contact, an ID change, invalid
+coordinates, an I2C read failure, leaving the held control or losing the controller connection immediately cancel
+the jog. After such a guard trip, motion remains locked until the touch controller reports zero contacts.
+
 The vendor firmware sends realtime `?` followed by proprietary byte `0xE1` and searches for the identity string
 `Grbl_ESP32`. The mainboard startup macro sends that compatibility identity after UART initialization. FluidNC
 answers the standard `?` request and handles `0xE1` as a display identity request. This explicit handling is also

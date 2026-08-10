@@ -51,6 +51,8 @@ constexpr uint32_t jogCancelRepeatMs = 50;
 constexpr uint32_t jogCancelGuardMs = 250;
 constexpr uint32_t navigationDoubleTapMs = 500;
 constexpr uint8_t jogCancel = 0x85;
+constexpr uint8_t invalidTouchId = 0x0F;
+constexpr int16_t heldTouchMargin = 12;
 
 int maxFeed = 60;
 int axisFeed = 60;
@@ -71,7 +73,12 @@ uint16_t colorRed;
 struct TouchPoint {
     uint16_t x;
     uint16_t y;
+    uint8_t count;
+    uint8_t id;
+    uint8_t event;
 };
+
+enum class TouchEvent : uint8_t { Press = 0, Lift = 1, Contact = 2, None = 3 };
 
 struct PadState {
     int16_t handleX = padCenterX;
@@ -129,18 +136,25 @@ bool readTouch(TouchPoint& point) {
         return false;
     }
 
-    const uint8_t touches = Wire.read() & 0x0F;
+    point.count = Wire.read() & 0x0F;
     const uint8_t xHigh = Wire.read();
     const uint8_t xLow = Wire.read();
     const uint8_t yHigh = Wire.read();
     const uint8_t yLow = Wire.read();
-    if (touches == 0) {
-        return false;
-    }
-
+    point.event = xHigh >> 6;
+    point.id = yHigh >> 4;
     point.x = (static_cast<uint16_t>(xHigh & 0x0F) << 8) | xLow;
     point.y = (static_cast<uint16_t>(yHigh & 0x0F) << 8) | yLow;
     return true;
+}
+
+bool activeTouchEvent(uint8_t event) {
+    return event == static_cast<uint8_t>(TouchEvent::Press) ||
+           event == static_cast<uint8_t>(TouchEvent::Contact);
+}
+
+bool validTouchCoordinates(const TouchPoint& point) {
+    return point.x <= 320 && point.y <= 480;
 }
 
 void drawMenuIcon(int16_t centerX, int16_t centerY, uint16_t color) {
@@ -594,6 +608,11 @@ bool insidePad(int16_t x, int16_t y) {
     return x >= padX && x < padX + padSize && y >= padY && y < padY + padSize;
 }
 
+bool insideHeldPad(int16_t x, int16_t y) {
+    return x >= padX - heldTouchMargin && x < padX + padSize + heldTouchMargin &&
+           y >= padY - heldTouchMargin && y < padY + padSize + heldTouchMargin;
+}
+
 bool insideSpeedSlider(int16_t x, int16_t y) {
     return x >= sliderPanelX && y >= sliderTop - 20 && y <= sliderBottom + 20;
 }
@@ -613,6 +632,22 @@ AxisDirection axisDirectionAt(int16_t x, int16_t y) {
     if (insideSquareButton(x, y, dpadRightCenterX, dpadCenterY - dpadOffset, dpadButtonSize)) return AxisDirection::APos;
     if (insideSquareButton(x, y, dpadRightCenterX, dpadCenterY + dpadOffset, dpadButtonSize)) return AxisDirection::ANeg;
     return AxisDirection::None;
+}
+
+bool insideHeldAxisDirection(AxisDirection direction, int16_t x, int16_t y) {
+    const int16_t heldSize = dpadButtonSize + heldTouchMargin * 2;
+    switch (direction) {
+        case AxisDirection::XNeg: return insideSquareButton(x, y, dpadLeftCenterX - dpadOffset, dpadCenterY, heldSize);
+        case AxisDirection::XPos: return insideSquareButton(x, y, dpadLeftCenterX + dpadOffset, dpadCenterY, heldSize);
+        case AxisDirection::YPos: return insideSquareButton(x, y, dpadLeftCenterX, dpadCenterY - dpadOffset, heldSize);
+        case AxisDirection::YNeg: return insideSquareButton(x, y, dpadLeftCenterX, dpadCenterY + dpadOffset, heldSize);
+        case AxisDirection::ZNeg: return insideSquareButton(x, y, dpadRightCenterX - dpadOffset, dpadCenterY, heldSize);
+        case AxisDirection::ZPos: return insideSquareButton(x, y, dpadRightCenterX + dpadOffset, dpadCenterY, heldSize);
+        case AxisDirection::APos: return insideSquareButton(x, y, dpadRightCenterX, dpadCenterY - dpadOffset, heldSize);
+        case AxisDirection::ANeg: return insideSquareButton(x, y, dpadRightCenterX, dpadCenterY + dpadOffset, heldSize);
+        case AxisDirection::None: return false;
+    }
+    return false;
 }
 
 void drawAxisDirection(AxisDirection direction, bool pressed) {
@@ -777,10 +812,39 @@ void setup() {
 
 void loop() {
     static TouchMode touchMode = TouchMode::None;
+    static bool touchReleaseRequired = false;
+    static uint8_t activeTouchId = invalidTouchId;
     TouchPoint point{};
-    const bool touched = readTouch(point);
+    const bool touchReadOk = readTouch(point);
+    bool touched = false;
+
+    if (!touchReadOk) {
+        touchReleaseRequired = true;
+    } else if (point.count == 0) {
+        touchReleaseRequired = false;
+        activeTouchId = invalidTouchId;
+    } else if (!touchReleaseRequired && point.count == 1 && point.id != invalidTouchId &&
+               activeTouchEvent(point.event) && validTouchCoordinates(point)) {
+        if (activeTouchId == invalidTouchId) activeTouchId = point.id;
+        if (activeTouchId == point.id) touched = true;
+        else touchReleaseRequired = true;
+    } else {
+        touchReleaseRequired = true;
+    }
+
     const int16_t screenX = static_cast<int16_t>(point.y);
     const int16_t screenY = static_cast<int16_t>(320 - point.x);
+
+    if (touched && touchMode == TouchMode::Pad &&
+        (!insideHeldPad(screenX, screenY) || connectionState() != ConnectionState::Ready)) {
+        touched = false;
+        touchReleaseRequired = true;
+    } else if (touched && touchMode == TouchMode::AxisJog &&
+               (!insideHeldAxisDirection(activeAxisDirection, screenX, screenY) ||
+                connectionState() != ConnectionState::Ready)) {
+        touched = false;
+        touchReleaseRequired = true;
+    }
 
     if (currentPage == Page::Scan || currentPage == Page::SlipTest || currentPage == Page::Settings) {
         bool navigationTouch = false;
